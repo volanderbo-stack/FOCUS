@@ -1,0 +1,1433 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1115">
+<meta name="color-scheme" content="dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Фокус">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<title>Контроль: Фокус</title>
+<style>
+/* ===================== Тема та базові стилі ===================== */
+:root{
+  --bg:#0f1115; --card:#171a21; --card2:#1f232c; --line:#2a2f3a;
+  --text:#eceef3; --muted:#8d94a5; --dim:#5d6474;
+  --accent:#7c6cff; --red:#ff5d5d; --yellow:#ffc548; --green:#3ecf8e;
+  --r:18px; --nav:66px;
+  color-scheme:dark;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);
+  font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif}
+body{min-height:100vh;padding-bottom:calc(var(--nav) + env(safe-area-inset-bottom));overscroll-behavior-y:none}
+#view{max-width:520px;margin:0 auto;padding:calc(14px + env(safe-area-inset-top)) 16px 28px;animation:fade .2s ease}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;padding:0}
+input,select,textarea{font:inherit;color:var(--text);background:var(--card2);border:1px solid var(--line);
+  border-radius:12px;padding:10px 12px;width:100%;min-height:48px;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+textarea{min-height:72px;resize:vertical}
+input[type=color]{padding:4px;width:48px;min-width:48px}
+h1{font-size:28px;margin:0;letter-spacing:-.02em}
+h2{font-size:24px;margin:6px 0 8px;line-height:1.2;letter-spacing:-.01em}
+h3{font-size:19px;margin:0}
+.eyebrow{color:var(--muted);font-size:13px;display:block}
+.eyebrow::first-letter{text-transform:uppercase}
+.label{color:var(--muted);font-size:13px;margin:22px 0 8px;text-transform:uppercase;letter-spacing:.06em}
+.muted{color:var(--muted)} .dim{color:var(--dim)}
+.hidden{display:none!important}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ===================== Кнопки, чіпи, сегменти ===================== */
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;min-height:50px;padding:0 16px;
+  border-radius:14px;background:var(--card2);font-weight:600;transition:transform .12s,background .15s;width:100%}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--accent);color:#fff}
+.btn.big{min-height:60px;font-size:18px}
+.btn.ghost{background:transparent;border:1px solid var(--line)}
+.btn.danger{color:var(--red)}
+.btn.sm{min-height:40px;font-size:14px;padding:0 12px;width:auto;border-radius:12px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.icon{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-size:20px;color:var(--muted);flex:none}
+.icon:active{background:var(--card2)}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{min-height:40px;padding:0 14px;border-radius:999px;background:var(--card2);border:1px solid var(--line);
+  font-size:14px;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;transition:background .15s}
+.chip.on{background:color-mix(in srgb,var(--c,var(--accent)) 26%,var(--card2));border-color:var(--c,var(--accent))}
+.chips.scroll{flex-wrap:nowrap;overflow-x:auto;margin:0 -16px;padding:0 16px 2px;scrollbar-width:none}
+.chips.scroll::-webkit-scrollbar{display:none}
+.seg{display:flex;background:var(--card2);border-radius:14px;padding:4px;gap:4px}
+.seg button{flex:1;min-height:42px;border-radius:10px;font-size:14px;color:var(--muted);transition:background .15s}
+.seg button.on{background:var(--card);color:var(--text);box-shadow:0 1px 0 rgba(255,255,255,.04)}
+
+/* ===================== Шапка екрана ===================== */
+.top{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:16px}
+.top .chip{max-width:48%;overflow:hidden;text-overflow:ellipsis}
+
+/* ===================== Екран «Зараз» ===================== */
+.mains{display:flex;align-items:center;justify-content:space-between;background:var(--card);border-radius:14px;
+  padding:12px 14px;margin-bottom:12px;width:100%;text-align:left}
+.mains b{font-size:17px}
+.dots{display:flex;gap:6px}
+.dots i{width:12px;height:12px;border-radius:50%;border:2px solid var(--red)}
+.dots i.on{background:var(--red)}
+.now-card{position:relative;background:linear-gradient(160deg,color-mix(in srgb,var(--c) 22%,var(--card)) 0%,var(--card) 60%);
+  border:1px solid color-mix(in srgb,var(--c) 40%,var(--line));border-radius:24px;padding:20px 18px 18px;overflow:hidden;animation:fade .25s ease}
+.now-card.is-done{opacity:.75}
+.now-card.free{--c:#5d6474}
+.meta{display:flex;gap:10px;flex-wrap:wrap;font-size:14px;color:var(--muted)}
+.meta .sph{color:var(--c);font-weight:600}
+.now-time{color:var(--muted);margin-bottom:14px}
+.now-time b{color:var(--text);font-size:20px}
+.bar{height:6px;background:rgba(255,255,255,.07);border-radius:9px;overflow:hidden;margin-bottom:18px}
+.bar i{display:block;height:100%;background:var(--c);border-radius:9px;transition:width .4s}
+.banner{display:flex;align-items:center;gap:12px;background:color-mix(in srgb,var(--accent) 22%,var(--card));
+  border:1px solid var(--accent);border-radius:16px;padding:12px 14px;margin-bottom:12px;width:100%;text-align:left}
+.banner .t{font-variant-numeric:tabular-nums;font-weight:700;font-size:18px;margin-left:auto}
+.pulse{width:10px;height:10px;border-radius:50%;background:var(--accent);animation:pulse 1.4s infinite}
+@keyframes pulse{50%{opacity:.3}}
+
+/* Рядок задачі в списках */
+.task{display:flex;align-items:center;gap:12px;background:var(--card);border-radius:14px;padding:10px 10px 10px 0;
+  margin-bottom:8px;position:relative;overflow:hidden;min-height:60px}
+.task::before{content:"";align-self:stretch;width:4px;background:var(--c);border-radius:0 4px 4px 0;flex:none}
+.task .body{flex:1;min-width:0}
+.task .name{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.task .sub{font-size:13px;color:var(--muted);margin-top:2px}
+.task.done .name{text-decoration:line-through;color:var(--muted)}
+.task .acts{display:flex;gap:6px;flex:none}
+.tm{font-variant-numeric:tabular-nums;color:var(--muted);font-size:14px;flex:none;width:44px}
+.check{width:40px;height:40px;border-radius:12px;border:2px solid var(--line);display:grid;place-items:center;flex:none;font-size:18px;color:#fff}
+.check.on{background:var(--green);border-color:var(--green)}
+.empty{text-align:center;color:var(--muted);padding:28px 12px;background:var(--card);border-radius:16px}
+
+/* ===================== Екран «День» (таймлайн) ===================== */
+.daynav{display:flex;align-items:center;gap:6px;margin-bottom:12px}
+.daynav .title{flex:1;text-align:center}
+.daynav .title b{display:block;font-size:17px;text-transform:capitalize}
+.timeline{position:relative;margin:4px 0 20px;user-select:none;-webkit-user-select:none}
+.hr{position:absolute;left:0;right:0;border-top:1px solid var(--line);height:0}
+.hr span{position:absolute;top:-9px;left:0;font-size:12px;color:var(--dim);background:var(--bg);padding-right:6px;font-variant-numeric:tabular-nums}
+.blk{position:absolute;border-radius:10px;padding:4px 6px 4px 10px;overflow:hidden;
+  background:color-mix(in srgb,var(--c) 24%,var(--card));border-left:4px solid var(--c);
+  display:flex;gap:6px;align-items:flex-start;touch-action:pan-y;cursor:pointer;
+  transition:box-shadow .15s,transform .15s,opacity .15s;-webkit-touch-callout:none}
+.blk.routine{background:var(--card);border-left-color:color-mix(in srgb,var(--c) 45%,var(--card));color:var(--muted)}
+.blk.done{opacity:.5}
+.blk.done .bn{text-decoration:line-through}
+.blk.dragging{z-index:5;transform:scale(1.02);box-shadow:0 10px 30px rgba(0,0,0,.55);opacity:.95;transition:box-shadow .15s,transform .15s}
+.blk .chk{width:28px;height:28px;border-radius:8px;border:2px solid color-mix(in srgb,var(--c) 70%,#fff 0%);flex:none;
+  display:grid;place-items:center;font-size:14px;color:#fff;margin-top:1px}
+.blk.done .chk{background:var(--green);border-color:var(--green)}
+.blk .bt{min-width:0;flex:1}
+.blk .bn{font-size:14px;font-weight:600;line-height:1.25;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.blk .bm{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.blk.sm{align-items:center;padding-top:0;padding-bottom:0}
+.blk.sm .chk{width:20px;height:20px;border-radius:6px;font-size:11px;margin:0}
+.blk.sm .bt{display:flex;gap:8px;align-items:baseline}
+.blk.sm .bn{-webkit-line-clamp:1;font-size:13px}
+.blk.sm .bm{flex:none}
+.nowline{position:absolute;left:40px;right:0;height:2px;background:var(--red);z-index:4;pointer-events:none}
+.nowline::before{content:"";position:absolute;left:-5px;top:-4px;width:10px;height:10px;border-radius:50%;background:var(--red)}
+.fab{position:fixed;right:max(16px,calc(50% - 244px));bottom:calc(var(--nav) + 16px + env(safe-area-inset-bottom));
+  width:58px;height:58px;border-radius:18px;background:var(--accent);color:#fff;font-size:30px;display:grid;place-items:center;
+  box-shadow:0 8px 24px rgba(124,108,255,.45);z-index:20}
+.fab:active{transform:scale(.94)}
+.hint{font-size:13px;color:var(--dim);margin-top:-8px;padding-right:76px}
+
+/* ===================== Інбокс ===================== */
+.qa{background:var(--card);border-radius:16px;padding:12px;display:grid;gap:8px}
+.qa .r{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.qa select{min-height:44px;padding:8px;font-size:14px}
+
+/* ===================== Підсумок ===================== */
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.tile{background:var(--card);border-radius:16px;padding:14px 12px}
+.tile b{display:block;font-size:24px;font-variant-numeric:tabular-nums}
+.tile span{font-size:12px;color:var(--muted)}
+.hero{display:flex;align-items:center;gap:18px;background:var(--card);border-radius:20px;padding:16px;margin-bottom:10px}
+.hero svg{width:110px;height:110px;flex:none}
+.bars{display:flex;align-items:flex-end;gap:8px;height:110px;background:var(--card);border-radius:16px;padding:14px 12px 8px}
+.bars div{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end}
+.bars i{width:100%;max-width:28px;border-radius:6px 6px 3px 3px;background:var(--red);min-height:3px}
+.bars i.none{background:var(--line)}
+.bars small{font-size:11px;color:var(--muted)}
+.bars .today small{color:var(--text);font-weight:700}
+.piebox{background:var(--card);border-radius:20px;padding:16px}
+.donut{width:180px;height:180px;display:block;margin:10px auto 14px}
+.d-big{fill:var(--text);font-size:24px;font-weight:700}
+.d-sub{fill:var(--muted);font-size:11px}
+.legend{display:grid;gap:8px}
+.legend div{display:flex;align-items:center;gap:10px;font-size:15px}
+.legend i{width:12px;height:12px;border-radius:4px;flex:none}
+.legend span{margin-left:auto;color:var(--muted);font-variant-numeric:tabular-nums}
+
+/* ===================== Налаштування ===================== */
+.card{background:var(--card);border-radius:16px;padding:14px;display:grid;gap:10px}
+.set-row{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px}
+.set-row input[type=time]{width:120px}
+.set-row select{width:58%}
+.switch{width:52px;height:32px;border-radius:99px;background:var(--line);position:relative;flex:none;transition:background .2s}
+.switch::after{content:"";position:absolute;top:4px;left:4px;width:24px;height:24px;border-radius:50%;background:#fff;transition:transform .2s}
+.switch.on{background:var(--accent)} .switch.on::after{transform:translateX(20px)}
+.sph-row{display:grid;grid-template-columns:56px 1fr 48px 44px;gap:8px;align-items:center}
+.sph-row input:first-child{text-align:center;padding:8px}
+.blk-row{background:var(--card2);border-radius:14px;padding:10px;display:grid;gap:8px;border-left:4px solid var(--c)}
+.blk-row .r{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.blk-row .r3{display:grid;grid-template-columns:1fr 1fr 44px;gap:8px}
+.blk-row input,.blk-row select{background:var(--card);min-height:44px;padding:8px 10px;font-size:15px}
+
+/* ===================== Нижнє меню ===================== */
+#nav{position:fixed;left:0;right:0;bottom:0;height:calc(var(--nav) + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);
+  background:rgba(15,17,21,.92);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--line);
+  display:flex;justify-content:center;z-index:30}
+#nav .in{display:grid;grid-template-columns:repeat(4,1fr);width:100%;max-width:520px}
+#nav button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11px;color:var(--dim);transition:color .15s}
+#nav button svg{width:24px;height:24px}
+#nav button.on{color:var(--text)}
+#nav button.on svg{color:var(--accent)}
+
+/* ===================== Нижній аркуш (sheet) ===================== */
+.sheet-wrap{position:fixed;inset:0;z-index:70}
+.backdrop{position:absolute;inset:0;background:rgba(0,0,0,.55);opacity:0;transition:opacity .2s}
+.sheet{position:absolute;left:0;right:0;bottom:0;margin:0 auto;max-width:560px;max-height:92vh;overflow-y:auto;
+  background:var(--card);border-radius:24px 24px 0 0;padding:10px 16px calc(20px + env(safe-area-inset-bottom));
+  transform:translateY(100%);transition:transform .22s cubic-bezier(.2,.8,.2,1);display:grid;gap:10px;align-content:start}
+.sheet::before{content:"";width:40px;height:5px;border-radius:9px;background:var(--line);justify-self:center}
+.sheet-wrap.open .backdrop{opacity:1}
+.sheet-wrap.open .sheet{transform:none}
+.sh-head{display:flex;align-items:center;justify-content:space-between}
+.sheet .label{margin:8px 0 0}
+.big-input{font-size:19px;font-weight:600;min-height:56px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.grid2 label,.field{display:grid;gap:4px;font-size:13px;color:var(--muted)}
+.opt{display:flex;align-items:center;gap:12px;text-align:left;background:var(--card2);border-radius:14px;padding:14px;min-height:56px;width:100%}
+.opt small{display:block;color:var(--muted);font-size:13px}
+.opt.on{outline:2px solid var(--accent)}
+
+/* ===================== Фокус-режим ===================== */
+.overlay{position:fixed;inset:0;z-index:60;background:var(--bg);overflow-y:auto;animation:fade .2s ease}
+.focus-in{min-height:100%;max-width:520px;margin:0 auto;display:flex;flex-direction:column;align-items:center;
+  padding:calc(16px + env(safe-area-inset-top)) 20px calc(24px + env(safe-area-inset-bottom));text-align:center}
+.focus-in .tophead{align-self:stretch;display:flex;justify-content:space-between;align-items:center}
+.focus-in h2{font-size:26px;margin:18px 0 4px}
+.ring{position:relative;width:min(78vw,300px);aspect-ratio:1;margin:auto 0}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring .tt{position:absolute;inset:0;display:grid;place-content:center;gap:4px}
+.ring .tt b{font-size:clamp(48px,16vw,68px);font-weight:300;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.ring .tt span{color:var(--muted);font-size:14px}
+.ring circle{transition:stroke-dashoffset 1s linear}
+.focus-btns{width:100%;display:grid;gap:10px;margin-top:18px}
+.phase-brk .ring .arc{stroke:var(--green)}
+
+/* ===================== Вечірній підсумок ===================== */
+.rv{max-width:520px;margin:0 auto;padding:calc(16px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom));min-height:100%;display:flex;flex-direction:column}
+.steps{display:flex;gap:6px;margin:6px 0 18px}
+.steps i{flex:1;height:4px;border-radius:9px;background:var(--line)}
+.steps i.on{background:var(--accent)}
+.rv .list{flex:1}
+.rv .foot{display:grid;grid-template-columns:1fr 2fr;gap:10px;margin-top:16px;position:sticky;bottom:0;background:var(--bg);padding-top:10px}
+.mv{display:grid;grid-template-columns:1fr 1fr 44px;gap:6px;margin-top:8px}
+.mv .btn{min-height:40px;font-size:13px}
+.task.col{flex-direction:column;align-items:stretch;padding:12px 12px 12px 16px}
+.task.col::before{position:absolute;left:0;top:0;bottom:0}
+.star{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-size:20px;flex:none;background:var(--card2);filter:grayscale(1);opacity:.5}
+.star.on{filter:none;opacity:1;background:color-mix(in srgb,var(--red) 22%,var(--card2))}
+
+/* ===================== Тост ===================== */
+.toast{position:fixed;left:50%;bottom:calc(var(--nav) + 18px + env(safe-area-inset-bottom));transform:translate(-50%,20px);opacity:0;
+  background:#2b3040;color:var(--text);padding:12px 16px;border-radius:14px;z-index:80;transition:all .2s;
+  display:flex;align-items:center;gap:14px;max-width:calc(100% - 32px);box-shadow:0 8px 24px rgba(0,0,0,.4);font-size:15px}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.toast button{color:var(--accent);font-weight:700}
+</style>
+</head>
+<body>
+<main id="view"></main>
+
+<nav id="nav"><div class="in">
+  <button data-a="tab" data-t="now"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/></svg>Зараз</button>
+  <button data-a="tab" data-t="day"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="3"/><path d="M3 9h18M8 2v4M16 2v4M7 13h5M7 17h8"/></svg>День</button>
+  <button data-a="tab" data-t="tasks"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M3.5 6l1.5 1.5L7 5M3.5 12l1.5 1.5L7 11M3.5 18l1.5 1.5L7 17"/></svg>Задачі</button>
+  <button data-a="tab" data-t="stats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a9 9 0 1 0 9 9h-9z"/><path d="M15 3.5A9 9 0 0 1 20.5 9H15z"/></svg>Підсумок</button>
+</div></nav>
+
+<div id="sheetWrap" class="sheet-wrap" hidden><div class="backdrop" data-a="closeSheet"></div><div class="sheet" id="sheet"></div></div>
+<div id="focus" class="overlay" hidden></div>
+<div id="review" class="overlay" hidden></div>
+<div id="toast" class="toast" hidden></div>
+<input type="file" id="importFile" accept="application/json,.json" hidden>
+
+<script>
+'use strict';
+/* =====================================================================
+   1. КОНСТАНТИ ТА УТИЛІТИ
+   ===================================================================== */
+const KEY = 'focus.v1', VER = 1;
+const PRI = {
+  main:      { label: 'Головне',              short: 'Головне',  dot: '🔴', w: 0 },
+  important: { label: 'Важливе',              short: 'Важливе',  dot: '🟡', w: 1 },
+  optional:  { label: 'Якщо залишиться час',  short: 'Якщо час', dot: '⚪', w: 2 },
+};
+const MAX_MAIN = 3;
+const DAY_START = 6 * 60, DAY_END = 24 * 60;   // межі таймлайну (хв від півночі)
+const SEARCH_END = 23 * 60;                     // до якого часу шукати вільне вікно
+const PX = 1.6;                                 // пікселів на хвилину в таймлайні
+const SNAP = 15;                                // крок перетягування, хв
+const DURS = [15, 30, 45, 60, 90, 120, 150, 180, 240];
+const WD_SHORT = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'];
+const WD_FULL = ['понеділок', 'вівторок', 'середа', 'четвер', 'пʼятниця', 'субота', 'неділя'];
+const MONTHS = ['січня', 'лютого', 'березня', 'квітня', 'травня', 'червня', 'липня', 'серпня', 'вересня', 'жовтня', 'листопада', 'грудня'];
+
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const pad = n => String(n).padStart(2, '0');
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const toMin = t => { const [h, m] = String(t).split(':').map(Number); return h * 60 + (m || 0); };
+const fmt = m => pad(Math.floor(m / 60) % 24) + ':' + pad(m % 60);
+const roundUp = (m, step) => Math.ceil(m / step) * step;
+const dk = (d = new Date()) => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+const parseDk = k => { const [y, m, d] = k.split('-').map(Number); return new Date(y, m - 1, d); };
+const addDays = (k, n) => { const d = parseDk(k); d.setDate(d.getDate() + n); return dk(d); };
+const today = () => dk();
+const nowMin = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); };
+const wd = k => (parseDk(k).getDay() + 6) % 7;           // 0 = понеділок
+const humanDate = k => `${WD_FULL[wd(k)]}, ${parseDk(k).getDate()} ${MONTHS[parseDk(k).getMonth()]}`;
+const relDay = k => k === today() ? 'Сьогодні' : k === addDays(today(), 1) ? 'Завтра' : k === addDays(today(), -1) ? 'Вчора' : WD_SHORT[wd(k)] + ', ' + parseDk(k).getDate() + ' ' + MONTHS[parseDk(k).getMonth()];
+const durTxt = m => m >= 60 ? `${Math.floor(m / 60)} год${m % 60 ? ' ' + (m % 60) + ' хв' : ''}` : `${m} хв`;
+const hoursTxt = m => (m / 60).toFixed(1).replace('.', ',').replace(',0', '') + ' год';
+const endOf = t => toMin(t.start) + t.dur;
+
+/* =====================================================================
+   2. ДАНІ ЗА ЗАМОВЧУВАННЯМ (сфери, шаблони, налаштування)
+   ===================================================================== */
+function defaults() {
+  const B = (s, e, n, sp, p) => ({ s, e, n, sp, p: p || null });   // блок шаблону; p = null → рутина
+  return {
+    v: VER,
+    spheres: [
+      { id: 'proj',  name: 'Проєкти',      color: '#8b7cff', emoji: '💻' },
+      { id: 'study', name: 'Навчання',     color: '#4f9dff', emoji: '🎓' },
+      { id: 'grow',  name: 'Саморозвиток', color: '#3ecf8e', emoji: '🌱' },
+      { id: 'body',  name: 'Тіло',         color: '#ff9a3c', emoji: '💪' },
+      { id: 'other', name: 'Інше',         color: '#8d94a5', emoji: '📌' },
+    ],
+    templates: [
+      { id: 'work', name: 'Будній день', blocks: [
+        B('07:00', '07:30', 'Підйом, вода, коротка розминка', 'body'),
+        B('07:30', '08:00', 'Сніданок + план дня (обрати 3 головні)', 'other'),
+        B('08:00', '10:00', 'Глибока робота: Проєкт №1 (вайбкодинг)', 'proj', 'main'),
+        B('10:00', '10:15', 'Перерва без телефону', 'body'),
+        B('10:15', '12:15', 'Університет: лекції / завдання', 'study', 'main'),
+        B('12:15', '13:15', 'Обід і відпочинок', 'body'),
+        B('13:15', '14:45', 'Професійне навчання / стажування', 'study', 'important'),
+        B('14:45', '15:30', 'Французька: слухання + говоріння', 'grow', 'important'),
+        B('15:30', '16:30', 'Трейдинг: аналіз ринку, журнал угод', 'grow', 'important'),
+        B('16:30', '18:00', 'Тренування', 'body', 'main'),
+        B('18:00', '19:00', 'Вечеря, вільний час', 'other'),
+        B('19:00', '20:30', 'Проєкт №2 / доробки / нові ідеї', 'proj', 'important'),
+        B('20:30', '21:00', 'Читання', 'grow', 'optional'),
+        B('21:00', '21:30', 'Підсумок дня + план на завтра', 'other'),
+        B('21:30', '22:30', 'Без екранів: душ, підготовка до сну', 'body'),
+        B('22:30', '23:00', 'Сон', 'body'),
+      ] },
+      { id: 'uni', name: 'День з парами', blocks: [
+        B('07:00', '07:30', 'Підйом, вода, коротка розминка', 'body'),
+        B('07:30', '08:00', 'Сніданок + план дня (обрати 3 головні)', 'other'),
+        B('08:00', '13:00', 'Пари в університеті', 'study', 'main'),
+        B('13:00', '14:00', 'Обід і відпочинок', 'body'),
+        B('14:00', '16:00', 'Глибока робота: Проєкт №1 (вайбкодинг)', 'proj', 'main'),
+        B('16:00', '16:30', 'Французька: коротка практика', 'grow', 'important'),
+        B('16:30', '18:00', 'Тренування', 'body', 'main'),
+        B('18:00', '19:00', 'Вечеря, вільний час', 'other'),
+        B('19:00', '20:30', 'Проєкт №2 / завдання з пар', 'proj', 'important'),
+        B('20:30', '21:00', 'Читання', 'grow', 'optional'),
+        B('21:00', '21:30', 'Підсумок дня + план на завтра', 'other'),
+        B('21:30', '22:30', 'Без екранів: душ, підготовка до сну', 'body'),
+        B('22:30', '23:00', 'Сон', 'body'),
+      ] },
+      { id: 'weekend', name: 'Вихідний', blocks: [
+        B('09:00', '09:30', 'Підйом, вода, розминка', 'body'),
+        B('09:30', '10:00', 'Сніданок', 'other'),
+        B('10:00', '12:00', 'Проєкт: спокійна робота без дедлайнів', 'proj', 'important'),
+        B('12:00', '13:00', 'Читання', 'grow', 'important'),
+        B('13:00', '14:00', 'Обід', 'body'),
+        B('14:00', '15:30', 'Тренування або прогулянка', 'body', 'main'),
+        B('15:30', '16:30', 'Трейдинг: огляд тижня на ринку', 'grow', 'optional'),
+        B('18:00', '19:00', 'Огляд тижня + план на наступний', 'other', 'main'),
+        B('21:00', '21:30', 'Підсумок дня + план на завтра', 'other'),
+        B('21:30', '22:30', 'Без екранів: душ, підготовка до сну', 'body'),
+        B('22:30', '23:00', 'Сон', 'body'),
+      ] },
+    ],
+    tasks: [],
+    days: {},          // { 'YYYY-MM-DD': { tpl } } — дні, вже створені з шаблону
+    reviewed: {},      // { 'YYYY-MM-DD': true } — вечірній підсумок пройдено
+    settings: {
+      week: ['work', 'work', 'work', 'work', 'work', 'weekend', 'weekend'],   // шаблон на кожен день тижня (Пн..Нд)
+      pomo: { work: 25, brk: 5 },
+      reviewTime: '21:00',
+      sound: true,
+      vibro: true,
+    },
+    focus: null,       // стан фокус-сесії (переживає перезавантаження)
+    ui: { tab: 'now', sub: null, statRange: 'day', fSp: 'all', fPri: 'all' },
+  };
+}
+
+/* =====================================================================
+   3. ЗБЕРЕЖЕННЯ (localStorage)
+   ===================================================================== */
+let S;
+function valid(d) {
+  return d && typeof d === 'object' && Array.isArray(d.spheres) && d.spheres.length > 0
+    && Array.isArray(d.tasks) && Array.isArray(d.templates) && d.templates.length > 0;
+}
+// Доповнює дані новими полями, якщо вони з'явилися в новій версії
+function migrate(d) {
+  const def = defaults();
+  d.settings = { ...def.settings, ...(d.settings || {}) };
+  d.settings.pomo = { ...def.settings.pomo, ...(d.settings.pomo || {}) };
+  if (!Array.isArray(d.settings.week) || d.settings.week.length !== 7) d.settings.week = def.settings.week;
+  d.days = d.days || {};
+  d.reviewed = d.reviewed || {};
+  d.ui = { ...def.ui, ...(d.ui || {}) };
+  d.focus = d.focus || null;
+  d.v = VER;
+  return d;
+}
+function load() {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (raw) { const d = JSON.parse(raw); if (valid(d)) return migrate(d); }
+  } catch (e) { /* пошкоджені дані — стартуємо з нуля */ }
+  return defaults();
+}
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify(S)); }
+  catch (e) { toast('Не вдалося зберегти дані'); }
+}
+
+/* =====================================================================
+   4. МОДЕЛЬ: сфери, задачі, дні
+   ===================================================================== */
+const sph = id => S.spheres.find(s => s.id === id) || S.spheres[0];
+const sphereOk = id => (S.spheres.some(s => s.id === id) ? id : S.spheres[0].id);
+const tplById = id => S.templates.find(t => t.id === id);
+const taskById = id => S.tasks.find(t => t.id === id);
+const sortTasks = (a, b) => toMin(a.start) - toMin(b.start) || PRI[a.pri].w - PRI[b.pri].w;
+const dayTasks = k => S.tasks.filter(t => t.date === k && t.start).sort(sortTasks);
+const inboxTasks = () => S.tasks.filter(t => !t.start && t.status === 'todo');
+
+// Створює задачі дня з шаблону (один раз на день)
+function ensureDay(k) {
+  if (S.days[k]) return;
+  const tpl = tplById(S.settings.week[wd(k)]) || S.templates[0];
+  S.days[k] = { tpl: tpl.id };
+  addFromTemplate(k, tpl);
+  save();
+}
+function addFromTemplate(k, tpl) {
+  for (const b of tpl.blocks) {
+    const s = toMin(b.s); let e = toMin(b.e); if (e <= s) e = s + 30;
+    S.tasks.push({
+      id: uid(), name: b.n, sphere: sphereOk(b.sp), pri: b.p || 'optional', routine: !b.p,
+      date: k, start: b.s, dur: e - s, status: 'todo', focusMin: 0, note: '', tpl: true,
+    });
+  }
+}
+// Перемикає шаблон дня: прибирає незмінені задачі старого шаблону, додає нові
+function switchTemplate(k, tplId) {
+  S.tasks = S.tasks.filter(t => !(t.date === k && t.tpl && t.status === 'todo' && !t.focusMin));
+  S.days[k] = { tpl: tplId };
+  addFromTemplate(k, tplById(tplId));
+  save();
+}
+
+function mainStats(k) {
+  const m = S.tasks.filter(t => t.date === k && t.start && t.pri === 'main' && t.status !== 'skipped');
+  return { done: m.filter(t => t.status === 'done').length, total: m.length };
+}
+const mainCount = (k, exceptId) => S.tasks.filter(t => t.date === k && t.start && t.pri === 'main' && t.status !== 'skipped' && t.id !== exceptId).length;
+
+// Пошук вільного вікна потрібної тривалості.
+// strict = true — не перетинатися ні з чим; false — дозволено накласти на рутину (обід, вільний час тощо)
+function findFree(k, dur, from, exceptId, strict) {
+  const busy = S.tasks.filter(t => t.date === k && t.start && t.id !== exceptId && t.status === 'todo' && (strict || !t.routine))
+    .map(t => [toMin(t.start), endOf(t)]);
+  for (let s = roundUp(Math.max(from, 0), SNAP); s + dur <= SEARCH_END; s += SNAP) {
+    if (!busy.some(([a, b]) => s < b && a < s + dur)) return s;
+  }
+  return null;
+}
+// Ставить задачу в день k у найближче вільне вікно; повертає підпис або null (якщо місця немає)
+function placeInDay(t, k, from) {
+  ensureDay(k);
+  const s = findFree(k, t.dur, from, t.id, true) ?? findFree(k, t.dur, from, t.id, false);
+  if (s == null) return null;
+  t.date = k; t.start = fmt(s); t.tpl = false;
+  return `${relDay(k).toLowerCase()} о ${t.start}`;
+}
+// «Запланувати» з інбоксу: сьогодні від зараз, інакше завтра
+function scheduleTask(t) {
+  const k = today();
+  const where = placeInDay(t, k, Math.max(roundUp(nowMin(), SNAP), DAY_START)) || placeInDay(t, addDays(k, 1), 7 * 60);
+  save();
+  return where;
+}
+function toInbox(t) { t.date = null; t.start = null; t.tpl = false; }
+
+// Задача, що йде зараз за часом
+function currentTask() {
+  const k = today(), n = nowMin();
+  const cur = dayTasks(k).filter(t => t.status !== 'skipped' && toMin(t.start) <= n && n < endOf(t));
+  cur.sort((a, b) => (a.status === 'done') - (b.status === 'done') || a.routine - b.routine || PRI[a.pri].w - PRI[b.pri].w);
+  return cur[0] || null;
+}
+// Наступна невиконана задача (сьогодні, а якщо немає — завтра)
+function nextTask(cur) {
+  const k = today(), n = nowMin();
+  const after = cur ? Math.max(n, toMin(cur.start)) : n;
+  const l = dayTasks(k).filter(t => t.status === 'todo' && t !== cur && toMin(t.start) > after);
+  if (l.length) return l[0];
+  const tk = addDays(k, 1); ensureDay(tk);
+  return dayTasks(tk).find(t => t.status === 'todo') || null;
+}
+
+/* =====================================================================
+   5. СТАТИСТИКА
+   ===================================================================== */
+// Хвилини по сферах: виконана задача = її тривалість (або більше, якщо фокусу було більше), інакше — час фокусу
+function sphereMinutes(keys) {
+  const res = {};
+  for (const t of S.tasks) {
+    if (!keys.includes(t.date)) continue;
+    const v = t.status === 'done' ? Math.max(t.dur, t.focusMin || 0) : (t.focusMin || 0);
+    if (v > 0) res[t.sphere] = (res[t.sphere] || 0) + v;
+  }
+  return res;
+}
+const dayComplete = k => { const m = mainStats(k); return m.total > 0 && m.done === m.total; };
+function streak() {
+  let k = today(), n = 0;
+  if (!dayComplete(k)) k = addDays(k, -1);       // сьогодні ще не закінчився — не рве серію
+  while (S.days[k] && dayComplete(k)) { n++; k = addDays(k, -1); }
+  return n;
+}
+const last7 = () => [...Array(7)].map((_, i) => addDays(today(), i - 6));
+
+/* =====================================================================
+   6. ІНТЕРФЕЙС: загальне
+   ===================================================================== */
+let viewDayKey = null;    // день, відкритий у вкладці «День»
+let rangeStart = DAY_START;
+let ED = null;            // чернетка задачі в редакторі
+
+function render() {
+  const v = $('#view');
+  const views = { now: viewNow, day: viewDay, tasks: viewTasks, stats: viewStats };
+  v.innerHTML = (views[S.ui.tab] || viewNow)();
+  document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b.dataset.t === S.ui.tab));
+}
+function switchTab(t) {
+  S.ui.tab = t; if (t === 'stats') S.ui.sub = null;
+  if (t === 'day') viewDayKey = today();
+  save(); render(); window.scrollTo(0, 0);
+  if (t === 'day') scrollToNow();
+}
+
+// Нижній аркуш
+let sheetRender = null;
+function openSheet(fn) {
+  sheetRender = fn;
+  $('#sheet').innerHTML = fn();
+  const w = $('#sheetWrap'); w.hidden = false;
+  requestAnimationFrame(() => requestAnimationFrame(() => w.classList.add('open')));
+}
+function refreshSheet() { if (sheetRender && !$('#sheetWrap').hidden) $('#sheet').innerHTML = sheetRender(); }
+function closeSheet() {
+  const w = $('#sheetWrap'); w.classList.remove('open'); sheetRender = null;
+  setTimeout(() => { if (!sheetRender) w.hidden = true; }, 230);
+}
+
+// Тост з необов'язковою дією («Скасувати»)
+let toastT;
+function toast(msg, actLabel, act) {
+  const el = $('#toast');
+  el.innerHTML = `<span>${esc(msg)}</span>` + (actLabel ? `<button id="toastAct">${esc(actLabel)}</button>` : '');
+  el.hidden = false;
+  requestAnimationFrame(() => el.classList.add('show'));
+  if (act) $('#toastAct').onclick = () => { act(); hideToast(); };
+  clearTimeout(toastT); toastT = setTimeout(hideToast, 3500);
+}
+function hideToast() { const el = $('#toast'); el.classList.remove('show'); setTimeout(() => { if (!el.classList.contains('show')) el.hidden = true; }, 220); }
+
+// Рядок задачі для списків
+function taskRow(t, opts = {}) {
+  const s = sph(t.sphere);
+  const time = t.start ? `${t.start}–${fmt(endOf(t))}` : durTxt(t.dur);
+  return `<div class="task ${t.status === 'done' ? 'done' : ''}" style="--c:${s.color}">
+    ${opts.check ? `<button class="check ${t.status === 'done' ? 'on' : ''}" data-a="done" data-id="${t.id}" aria-label="Виконано">${t.status === 'done' ? '✓' : ''}</button>` : ''}
+    <div class="body" data-a="edit" data-id="${t.id}">
+      <div class="name">${t.routine ? '' : PRI[t.pri].dot + ' '}${esc(t.name)}</div>
+      <div class="sub">${s.emoji} ${esc(s.name)} · ${opts.sub || time}</div>
+    </div>
+    ${opts.acts ? `<div class="acts">${opts.acts}</div>` : ''}
+  </div>`;
+}
+
+/* =====================================================================
+   7. ЕКРАН «ЗАРАЗ»
+   ===================================================================== */
+function viewNow() {
+  const k = today(); ensureDay(k);
+  const n = nowMin();
+  const cur = currentTask();
+  const nx = nextTask(cur);
+  const ms = mainStats(k);
+  const tpl = tplById(S.days[k].tpl);
+  let h = `<div class="top"><div><div class="eyebrow">${humanDate(k)}</div><h1>Зараз</h1></div>
+    <button class="chip" data-a="pickTpl" data-k="${k}">${esc(tpl ? tpl.name : 'Шаблон')} ▾</button></div>`;
+
+  // Банер активного фокусу
+  if (S.focus) {
+    const ft = taskById(S.focus.taskId);
+    h += `<button class="banner" data-a="openFocus"><span class="pulse"></span><span>${S.focus.phase === 'work' ? 'Фокус' : 'Перерва'}: <b>${esc(ft ? ft.name : '')}</b></span><span class="t" id="bannerT">${mmss(focusLeft())}</span></button>`;
+  }
+
+  // Лічильник головних
+  h += `<button class="mains" data-a="pickMain" data-k="${k}"><span>Головні сьогодні: <b>${ms.done}/${ms.total}</b>${ms.total === 0 ? ' <span class="muted">— обрати</span>' : ''}</span>
+    <span class="dots">${[...Array(Math.max(ms.total, MAX_MAIN))].map((_, i) => `<i class="${i < ms.done ? 'on' : ''}"></i>`).join('')}</span></button>`;
+
+  if (cur) {
+    const s = sph(cur.sphere), st = toMin(cur.start), done = cur.status === 'done';
+    const left = endOf(cur) - n, p = clamp((n - st) / cur.dur * 100, 0, 100);
+    h += `<article class="now-card ${done ? 'is-done' : ''}" style="--c:${s.color}">
+      <div class="meta"><span class="sph">${s.emoji} ${esc(s.name)}</span>${cur.routine ? '' : `<span>${PRI[cur.pri].dot} ${PRI[cur.pri].label}</span>`}</div>
+      <h2>${esc(cur.name)}</h2>
+      <div class="now-time">${cur.start}–${fmt(endOf(cur))} · ${done ? '<b>виконано ✓</b>' : `залишилось <b>${durTxt(left)}</b>`}</div>
+      <div class="bar"><i style="width:${p}%"></i></div>
+      ${done
+        ? `<button class="btn" data-a="done" data-id="${cur.id}">↺ Повернути в роботу</button>`
+        : `<button class="btn primary big" data-a="focus" data-id="${cur.id}">▶ Почати фокус</button>
+           <div class="row2"><button class="btn" data-a="done" data-id="${cur.id}">✓ Готово</button><button class="btn" data-a="postpone" data-id="${cur.id}">→ Перенести</button></div>`}
+    </article>`;
+  } else {
+    // Вільний час: підказка з інбоксу
+    const sug = inboxTasks().sort((a, b) => PRI[a.pri].w - PRI[b.pri].w)[0];
+    h += `<article class="now-card free">
+      <div class="meta"><span>Вільний час</span></div>
+      <h2>${n >= 22 * 60 + 30 || n < 6 * 60 ? 'Час відпочивати 🌙' : 'Зараз нічого не заплановано'}</h2>
+      <div class="now-time">${nx ? `Далі: ${nx.date === k ? 'о ' + nx.start : relDay(nx.date).toLowerCase() + ' о ' + nx.start}` : 'План на сьогодні виконано'}</div>
+      ${sug && n < 22 * 60 ? `<div class="label" style="margin-top:4px">Можна зайнятися</div>${taskRow(sug, { acts: `<button class="btn sm primary" data-a="focus" data-id="${sug.id}">▶</button>` })}` : ''}
+      <button class="btn ghost" data-a="add" data-date="${k}">+ Додати задачу</button>
+    </article>`;
+  }
+
+  if (nx) {
+    const mins = nx.date === k ? toMin(nx.start) - n : null;
+    h += `<div class="label">Далі</div>${taskRow(nx, { sub: nx.date === k ? `${nx.start} · через ${durTxt(Math.max(mins, 0))}` : `${relDay(nx.date)}, ${nx.start}` })}`;
+  }
+
+  // Незакриті задачі, час яких уже минув
+  const missed = dayTasks(k).filter(t => t.status === 'todo' && !t.routine && endOf(t) <= n && t !== cur);
+  if (missed.length) {
+    h += `<div class="label">Не закрито сьогодні · ${missed.length}</div>` + missed.map(t => taskRow(t, {
+      check: true, acts: `<button class="icon" data-a="postpone" data-id="${t.id}" aria-label="Перенести">→</button>`,
+    })).join('');
+  }
+  return h;
+}
+
+/* =====================================================================
+   8. ЕКРАН «ДЕНЬ» (таймлайн з перетягуванням)
+   ===================================================================== */
+// Розкладка блоків, що перетинаються, по колонках
+function layoutBlocks(list) {
+  const items = list.map(t => ({ t, s: toMin(t.start), e: toMin(t.start) + Math.max(t.dur, SNAP) }));
+  const out = []; let cl = [], clEnd = -1;
+  const flush = () => {
+    const cols = [];
+    for (const it of cl) { let c = cols.findIndex(end => end <= it.s); if (c < 0) { c = cols.length; cols.push(0); } cols[c] = it.e; it.col = c; }
+    cl.forEach(it => (it.cols = cols.length)); out.push(...cl); cl = [];
+  };
+  for (const it of items) { if (cl.length && it.s >= clEnd) { flush(); clEnd = -1; } cl.push(it); clEnd = Math.max(clEnd, it.e); }
+  if (cl.length) flush();
+  return out;
+}
+function viewDay() {
+  const k = viewDayKey || (viewDayKey = today()); ensureDay(k);
+  const list = dayTasks(k).filter(t => t.status !== 'skipped');
+  rangeStart = DAY_START;
+  for (const t of list) rangeStart = Math.min(rangeStart, Math.floor(toMin(t.start) / 60) * 60);
+  const H = (DAY_END - rangeStart) * PX;
+  const tpl = tplById(S.days[k].tpl);
+  const ms = mainStats(k);
+
+  let h = `<div class="daynav">
+    <button class="icon" data-a="dayShift" data-n="-1" aria-label="Попередній день">‹</button>
+    <div class="title"><b>${relDay(k)}</b><span class="eyebrow">${humanDate(k)} · головні ${ms.done}/${ms.total}</span></div>
+    <button class="icon" data-a="dayShift" data-n="1" aria-label="Наступний день">›</button></div>
+    <div class="chips" style="margin-bottom:14px">
+      <button class="chip" data-a="pickTpl" data-k="${k}">📋 ${esc(tpl ? tpl.name : 'Шаблон')} ▾</button>
+      <button class="chip" data-a="pickMain" data-k="${k}">🔴 Головні</button>
+      ${k !== today() ? `<button class="chip" data-a="dayShift" data-n="0">Сьогодні</button>` : ''}
+    </div>
+    <div class="timeline" id="tl" style="height:${H + 10}px">`;
+  for (let m = rangeStart; m <= DAY_END; m += 60) {
+    h += `<div class="hr" style="top:${(m - rangeStart) * PX}px"><span>${fmt(m === DAY_END ? 0 : m)}</span></div>`;
+  }
+  for (const it of layoutBlocks(list)) {
+    const t = it.t, s = sph(t.sphere);
+    const top = (it.s - rangeStart) * PX, hh = Math.max(t.dur * PX - 2, 22);
+    const small = hh < 46;
+    const L = `calc(46px + (100% - 46px) * ${it.col / it.cols})`, W = `calc((100% - 46px) / ${it.cols} - 3px)`;
+    h += `<div class="blk ${small ? 'sm' : ''} ${t.routine ? 'routine' : ''} ${t.status === 'done' ? 'done' : ''}" data-id="${t.id}"
+      style="top:${top}px;height:${hh}px;left:${L};width:${W};--c:${s.color}">
+      <button class="chk" data-a="done" data-id="${t.id}" aria-label="Виконано">${t.status === 'done' ? '✓' : ''}</button>
+      <div class="bt"><div class="bn">${t.routine ? '' : PRI[t.pri].dot + ' '}${esc(t.name)}</div><div class="bm">${t.start}–${fmt(endOf(t))}</div></div>
+    </div>`;
+  }
+  if (k === today()) h += `<div class="nowline" id="nowline" style="top:${(nowMin() - rangeStart) * PX}px"></div>`;
+  h += `</div><p class="hint">Утримуйте блок і тягніть, щоб змінити час</p>
+    <button class="fab" data-a="add" data-date="${k}" aria-label="Додати задачу">+</button>`;
+  return h;
+}
+function updateNowLine() { const l = $('#nowline'); if (l) l.style.top = (nowMin() - rangeStart) * PX + 'px'; }
+function scrollToNow() {
+  const l = $('#nowline') || $('.blk');
+  if (l) window.scrollTo({ top: Math.max(0, l.getBoundingClientRect().top + window.scrollY - 200) });
+}
+
+// --- Перетягування блоків (мишка й палець через Pointer Events) ---
+let drag = null;
+document.addEventListener('pointerdown', e => {
+  const b = e.target.closest('.blk');
+  if (!b || e.target.closest('.chk') || (e.pointerType === 'mouse' && e.button !== 0)) return;
+  const id = b.dataset.id;
+  drag = { el: b, id, y0: e.clientY, x0: e.clientX, top0: parseFloat(b.style.top), active: false, moved: false, newStart: null, pid: e.pointerId };
+  drag.timer = setTimeout(() => {
+    if (!drag || drag.moved) return;
+    drag.active = true; b.classList.add('dragging');
+    if (S.settings.vibro) navigator.vibrate?.(15);
+    try { b.setPointerCapture(drag.pid); } catch (err) { /* не критично */ }
+  }, 380);
+});
+document.addEventListener('pointermove', e => {
+  if (!drag) return;
+  const dy = e.clientY - drag.y0, dx = e.clientX - drag.x0;
+  if (!drag.active) { if (Math.abs(dy) > 8 || Math.abs(dx) > 8) { drag.moved = true; clearTimeout(drag.timer); } return; }
+  const t = taskById(drag.id);
+  let m = rangeStart + (drag.top0 + dy) / PX;
+  m = clamp(Math.round(m / SNAP) * SNAP, rangeStart, DAY_END - t.dur);
+  drag.newStart = m;
+  drag.el.style.top = (m - rangeStart) * PX + 'px';
+  drag.el.querySelector('.bm').textContent = fmt(m) + '–' + fmt(m + t.dur);
+});
+function endDrag(e) {
+  if (!drag) return;
+  clearTimeout(drag.timer);
+  const d = drag; drag = null;
+  if (d.active) {
+    const t = taskById(d.id);
+    if (d.newStart != null && fmt(d.newStart) !== t.start) { t.start = fmt(d.newStart); t.tpl = false; save(); toast('Перенесено на ' + t.start); }
+    render();
+  } else if (!d.moved && e.type === 'pointerup') openEditor(d.id);
+}
+document.addEventListener('pointerup', endDrag);
+document.addEventListener('pointercancel', endDrag);
+// Під час перетягування пальцем — не скролити сторінку
+document.addEventListener('touchmove', e => { if (drag && drag.active) e.preventDefault(); }, { passive: false });
+document.addEventListener('contextmenu', e => { if (e.target.closest('.blk')) e.preventDefault(); });
+
+/* =====================================================================
+   9. ЕКРАН «ЗАДАЧІ» (інбокс)
+   ===================================================================== */
+function viewTasks() {
+  const fs = S.ui.fSp, fp = S.ui.fPri;
+  const list = inboxTasks().filter(t => (fs === 'all' || t.sphere === fs) && (fp === 'all' || t.pri === fp))
+    .sort((a, b) => PRI[a.pri].w - PRI[b.pri].w);
+  const k = today();
+  const tails = S.tasks.filter(t => t.date && t.date < k && t.start && t.status === 'todo' && !t.routine)
+    .sort((a, b) => a.date.localeCompare(b.date) || sortTasks(a, b));
+
+  let h = `<div class="top"><div><div class="eyebrow">Без часу · ${inboxTasks().length}</div><h1>Задачі</h1></div></div>
+    <div class="qa">
+      <input id="qaName" placeholder="Нова задача…" maxlength="120" enterkeyhint="done">
+      <div class="r">
+        <select id="qaSp" aria-label="Сфера">${S.spheres.map(s => `<option value="${s.id}" ${fs === s.id ? 'selected' : ''}>${s.emoji} ${esc(s.name)}</option>`).join('')}</select>
+        <select id="qaPri" aria-label="Пріоритет">${Object.entries(PRI).map(([p, v]) => `<option value="${p}" ${p === 'important' ? 'selected' : ''}>${v.dot} ${v.short}</option>`).join('')}</select>
+        <select id="qaDur" aria-label="Тривалість">${DURS.map(d => `<option value="${d}" ${d === 60 ? 'selected' : ''}>${durTxt(d)}</option>`).join('')}</select>
+      </div>
+      <button class="btn primary" data-a="quickAdd">Додати в інбокс</button>
+    </div>
+    <div class="label">Фільтр</div>
+    <div class="chips scroll" style="margin-bottom:8px">
+      <button class="chip ${fs === 'all' ? 'on' : ''}" data-a="fSp" data-v="all">Усі сфери</button>
+      ${S.spheres.map(s => `<button class="chip ${fs === s.id ? 'on' : ''}" style="--c:${s.color}" data-a="fSp" data-v="${s.id}">${s.emoji} ${esc(s.name)}</button>`).join('')}
+    </div>
+    <div class="chips scroll">
+      <button class="chip ${fp === 'all' ? 'on' : ''}" data-a="fPri" data-v="all">Будь-який</button>
+      ${Object.entries(PRI).map(([p, v]) => `<button class="chip ${fp === p ? 'on' : ''}" data-a="fPri" data-v="${p}">${v.dot} ${v.short}</button>`).join('')}
+    </div>
+    <div class="label">Інбокс</div>`;
+  h += list.length
+    ? list.map(t => taskRow(t, { acts: `<button class="btn sm" data-a="schedule" data-id="${t.id}">Запланувати</button>` })).join('')
+    : `<div class="empty">${inboxTasks().length ? 'Немає задач за цим фільтром' : 'Інбокс порожній. Записуйте сюди все, що спадає на думку, — і плануйте у вільне вікно.'}</div>`;
+  if (tails.length) {
+    h += `<div class="label">Хвости з минулих днів · ${tails.length}</div>` + tails.map(t => taskRow(t, {
+      sub: relDay(t.date), acts: `<button class="btn sm" data-a="schedule" data-id="${t.id}">На сьогодні</button>`,
+    })).join('');
+  }
+  return h;
+}
+
+/* =====================================================================
+   10. ЕКРАН «ПІДСУМОК» + НАЛАШТУВАННЯ
+   ===================================================================== */
+function donut(parts, total, big, sub, size = 160, sw = 22) {
+  const c = size / 2, r = c - sw / 2 - 2, C = 2 * Math.PI * r; let off = 0;
+  const segs = parts.map(p => {
+    const len = total ? p.v / total * C : 0;
+    const s = `<circle r="${r}" cx="${c}" cy="${c}" fill="none" stroke="${p.c}" stroke-width="${sw}" stroke-dasharray="${len} ${C - len}" stroke-dashoffset="${-off}"/>`;
+    off += len; return s;
+  }).join('');
+  return `<svg viewBox="0 0 ${size} ${size}" class="donut"><g transform="rotate(-90 ${c} ${c})">
+    <circle r="${r}" cx="${c}" cy="${c}" fill="none" stroke="var(--card2)" stroke-width="${sw}"/>${segs}</g>
+    <text x="${c}" y="${c + 2}" text-anchor="middle" class="d-big">${big}</text><text x="${c}" y="${c + 22}" text-anchor="middle" class="d-sub">${sub}</text></svg>`;
+}
+function viewStats() {
+  if (S.ui.sub === 'settings') return viewSettings();
+  if (S.ui.sub && S.ui.sub.startsWith('tpl:')) return viewTplEdit(S.ui.sub.slice(4));
+  const k = today(); ensureDay(k);
+  const m = mainStats(k), pct = m.total ? Math.round(m.done / m.total * 100) : 0;
+  const keys = last7();
+  const wk = keys.reduce((a, d) => { const s = mainStats(d); a.d += s.done; a.t += s.total; return a; }, { d: 0, t: 0 });
+  const wpct = wk.t ? Math.round(wk.d / wk.t * 100) : 0;
+  const focusToday = S.tasks.filter(t => t.date === k).reduce((a, t) => a + (t.focusMin || 0), 0);
+  const range = S.ui.statRange;
+  const mins = sphereMinutes(range === 'day' ? [k] : keys);
+  const parts = S.spheres.map(s => ({ v: mins[s.id] || 0, c: s.color, s })).filter(p => p.v > 0).sort((a, b) => b.v - a.v);
+  const total = parts.reduce((a, p) => a + p.v, 0);
+
+  let h = `<div class="top"><div><div class="eyebrow">${humanDate(k)}</div><h1>Підсумок</h1></div>
+    <button class="icon" data-a="sub" data-v="settings" aria-label="Налаштування">⚙️</button></div>
+    <div class="hero">${donut([{ v: m.done, c: 'var(--red)' }], m.total || 1, pct + '%', 'головних', 160, 18).replace('class="donut"', '')}
+      <div><div class="eyebrow">Сьогодні</div><h3>${m.done} з ${m.total} головних</h3>
+      <div class="muted" style="font-size:14px;margin-top:4px">${m.total === 0 ? 'Оберіть головні задачі дня' : dayComplete(k) ? 'День виконано 🔥' : 'Закрийте всі головні — і день зараховано'}</div></div></div>
+    <div class="tiles">
+      <div class="tile"><b>${wpct}%</b><span>головних за 7 днів</span></div>
+      <div class="tile"><b>${streak()} 🔥</b><span>днів поспіль</span></div>
+      <div class="tile"><b>${focusToday}</b><span>хв фокусу сьогодні</span></div>
+    </div>
+    <div class="label">Головні за 7 днів</div>
+    <div class="bars">${keys.map(d => { const s = mainStats(d); const p = s.total ? s.done / s.total : 0;
+      return `<div class="${d === k ? 'today' : ''}"><i class="${s.total ? '' : 'none'}" style="height:${Math.max(p * 70, 3)}px;${p === 1 ? 'background:var(--green)' : ''}"></i><small>${WD_SHORT[wd(d)]}</small></div>`; }).join('')}</div>
+    <div class="label">Час по сферах</div>
+    <div class="piebox">
+      <div class="seg"><button class="${range === 'day' ? 'on' : ''}" data-a="statRange" data-v="day">Сьогодні</button><button class="${range === 'week' ? 'on' : ''}" data-a="statRange" data-v="week">7 днів</button></div>
+      ${total ? donut(parts, total, hoursTxt(total).replace(' год', ''), 'годин') + `<div class="legend">${parts.map(p => `<div><i style="background:${p.c}"></i>${p.s.emoji} ${esc(p.s.name)}<span>${hoursTxt(p.v)} · ${Math.round(p.v / total * 100)}%</span></div>`).join('')}</div>`
+        : `<div class="empty" style="margin-top:12px">Ще немає даних. Позначайте виконане й запускайте фокус — тут зʼявиться розподіл часу.</div>`}
+    </div>
+    <div style="margin-top:16px"><button class="btn ghost" data-a="reviewNow">🌙 Пройти вечірній підсумок</button></div>`;
+  return h;
+}
+
+function viewSettings() {
+  const st = S.settings;
+  return `<div class="top"><div style="display:flex;align-items:center;gap:6px"><button class="icon" data-a="sub" data-v="" aria-label="Назад">‹</button><h1>Налаштування</h1></div></div>
+  <div class="label">Фокус</div>
+  <div class="card">
+    <div class="seg">${[[25, 5], [50, 10]].map(([w, b]) => `<button class="${st.pomo.work === w ? 'on' : ''}" data-a="pomo" data-w="${w}" data-b="${b}">${w} / ${b} хв</button>`).join('')}</div>
+    <div class="set-row"><span>Звук наприкінці</span><button class="switch ${st.sound ? 'on' : ''}" data-a="toggleSet" data-k="sound" aria-label="Звук"></button></div>
+    <div class="set-row"><span>Вібрація</span><button class="switch ${st.vibro ? 'on' : ''}" data-a="toggleSet" data-k="vibro" aria-label="Вібрація"></button></div>
+    <div class="set-row"><span>Сповіщення</span><button class="btn sm" data-a="notifyPerm">${'Notification' in window ? (Notification.permission === 'granted' ? 'Дозволено ✓' : 'Дозволити') : 'Недоступно'}</button></div>
+  </div>
+  <div class="label">Вечірній підсумок</div>
+  <div class="card"><div class="set-row"><span>Час нагадування</span><input type="time" data-c="reviewTime" value="${st.reviewTime}"></div></div>
+  <div class="label">Тижневий розклад</div>
+  <div class="card">${WD_SHORT.map((d, i) => `<div class="set-row"><span>${WD_FULL[i][0].toUpperCase() + WD_FULL[i].slice(1)}</span><select data-c="week" data-i="${i}">${S.templates.map(t => `<option value="${t.id}" ${st.week[i] === t.id ? 'selected' : ''}>${esc(t.name)}</option>`).join('')}</select></div>`).join('')}
+    <div class="dim" style="font-size:13px">Діє з завтрашнього дня. Сьогоднішній день перемикається на екрані «Зараз».</div></div>
+  <div class="label">Шаблони дня</div>
+  <div class="card">${S.templates.map(t => `<div class="set-row"><span>${esc(t.name)} <span class="dim">· ${t.blocks.length} блоків</span></span><button class="btn sm" data-a="sub" data-v="tpl:${t.id}">Редагувати</button></div>`).join('')}
+    <button class="btn ghost" data-a="tplNew">+ Новий шаблон</button></div>
+  <div class="label">Сфери</div>
+  <div class="card">${S.spheres.map(s => `<div class="sph-row">
+      <input data-c="sphEmoji" data-id="${s.id}" value="${esc(s.emoji)}" maxlength="4" aria-label="Емодзі">
+      <input data-c="sphName" data-id="${s.id}" value="${esc(s.name)}" maxlength="30" aria-label="Назва">
+      <input type="color" data-c="sphColor" data-id="${s.id}" value="${s.color}" aria-label="Колір">
+      <button class="icon" data-a="sphDel" data-id="${s.id}" aria-label="Видалити">✕</button></div>`).join('')}
+    <button class="btn ghost" data-a="sphAdd">+ Додати сферу</button></div>
+  <div class="label">Дані</div>
+  <div class="card">
+    <div class="row2" style="margin:0"><button class="btn" data-a="export">⬇ Експорт JSON</button><button class="btn" data-a="import">⬆ Імпорт JSON</button></div>
+    <button class="btn ghost danger" data-a="reset">Скинути всі дані</button>
+  </div>
+  <p class="dim" style="font-size:13px;text-align:center;margin-top:20px">Дані зберігаються лише на цьому пристрої. Робіть експорт для резервної копії.</p>`;
+}
+
+function viewTplEdit(id) {
+  const tpl = tplById(id);
+  if (!tpl) { S.ui.sub = 'settings'; return viewSettings(); }
+  tpl.blocks.sort((a, b) => toMin(a.s) - toMin(b.s));
+  const mains = tpl.blocks.filter(b => b.p === 'main').length;
+  return `<div class="top"><div style="display:flex;align-items:center;gap:6px"><button class="icon" data-a="sub" data-v="settings" aria-label="Назад">‹</button><h1>Шаблон</h1></div></div>
+  <input class="big-input" data-c="tplName" data-id="${tpl.id}" value="${esc(tpl.name)}" maxlength="40" aria-label="Назва шаблону">
+  <div class="label">Блоки · головних ${mains}/${MAX_MAIN}</div>
+  <div style="display:grid;gap:8px">${tpl.blocks.map((b, i) => `<div class="blk-row" style="--c:${sph(b.sp).color}">
+    <div class="r"><input type="time" step="300" data-c="blk" data-f="s" data-i="${i}" value="${b.s}" aria-label="Початок"><input type="time" step="300" data-c="blk" data-f="e" data-i="${i}" value="${b.e}" aria-label="Кінець"></div>
+    <input data-c="blk" data-f="n" data-i="${i}" value="${esc(b.n)}" placeholder="Назва" maxlength="120">
+    <div class="r3">
+      <select data-c="blk" data-f="sp" data-i="${i}" aria-label="Сфера">${S.spheres.map(s => `<option value="${s.id}" ${b.sp === s.id ? 'selected' : ''}>${s.emoji} ${esc(s.name)}</option>`).join('')}</select>
+      <select data-c="blk" data-f="p" data-i="${i}" aria-label="Пріоритет"><option value="" ${!b.p ? 'selected' : ''}>— рутина</option>${Object.entries(PRI).map(([p, v]) => `<option value="${p}" ${b.p === p ? 'selected' : ''}>${v.dot} ${v.short}</option>`).join('')}</select>
+      <button class="icon" data-a="blkDel" data-i="${i}" aria-label="Видалити блок">✕</button>
+    </div></div>`).join('')}</div>
+  <div style="display:grid;gap:10px;margin-top:12px">
+    <button class="btn ghost" data-a="blkAdd">+ Додати блок</button>
+    <button class="btn primary" data-a="tplApply">Застосувати до сьогодні</button>
+    <div class="row2" style="margin:0"><button class="btn" data-a="tplDup">Дублювати</button><button class="btn danger" data-a="tplDel">Видалити</button></div>
+  </div>`;
+}
+
+/* =====================================================================
+   11. АРКУШІ: редактор задачі, перенесення, шаблон, головні
+   ===================================================================== */
+function openEditor(id, preset = {}) {
+  const t = id ? taskById(id) : null;
+  if (id && !t) return;
+  const k = preset.date || viewDayKey || today();
+  let start = t?.start;
+  if (!start) { ensureDay(k); const s = findFree(k, 60, k === today() ? Math.max(roundUp(nowMin(), SNAP), DAY_START) : 9 * 60, null, false); start = fmt(s ?? 9 * 60); }
+  ED = t ? { ...t, date: t.date || k, start, mode: t.start ? 'plan' : 'inbox' }
+         : { id: null, name: '', sphere: S.spheres[0].id, pri: 'important', date: k, start, dur: 60, note: '', status: 'todo', mode: preset.inbox ? 'inbox' : 'plan' };
+  openSheet(editorHTML);
+  if (!id) setTimeout(() => $('#sheet [data-in="name"]')?.focus(), 250);
+}
+function editorHTML() {
+  const e = ED, plan = e.mode === 'plan';
+  const durs = DURS.includes(+e.dur) ? DURS : [...DURS, +e.dur].sort((a, b) => a - b);
+  return `<div class="sh-head"><h3>${e.id ? 'Задача' : 'Нова задача'}</h3><button class="icon" data-a="closeSheet" aria-label="Закрити">✕</button></div>
+  <input class="big-input" data-in="name" value="${esc(e.name)}" placeholder="Що зробити?" maxlength="120">
+  <div class="label">Сфера</div>
+  <div class="chips">${S.spheres.map(s => `<button class="chip ${e.sphere === s.id ? 'on' : ''}" style="--c:${s.color}" data-a="edSet" data-f="sphere" data-v="${s.id}">${s.emoji} ${esc(s.name)}</button>`).join('')}</div>
+  <div class="label">Пріоритет</div>
+  <div class="seg">${Object.entries(PRI).map(([p, v]) => `<button class="${e.pri === p && !e.routine ? 'on' : ''}" data-a="edSet" data-f="pri" data-v="${p}">${v.dot} ${v.short}</button>`).join('')}</div>
+  <div class="label">Коли</div>
+  <div class="seg"><button class="${plan ? 'on' : ''}" data-a="edSet" data-f="mode" data-v="plan">У плані дня</button><button class="${!plan ? 'on' : ''}" data-a="edSet" data-f="mode" data-v="inbox">В інбоксі</button></div>
+  ${plan ? `<div class="grid2"><label>Дата<input type="date" data-in="date" value="${e.date}"></label><label>Початок<input type="time" step="300" data-in="start" value="${e.start}"></label></div>` : ''}
+  <label class="field">Тривалість<select data-in="dur">${durs.map(d => `<option value="${d}" ${+e.dur === d ? 'selected' : ''}>${durTxt(d)}</option>`).join('')}</select></label>
+  <textarea data-in="note" placeholder="Нотатка (необовʼязково)">${esc(e.note)}</textarea>
+  <button class="btn primary big" data-a="edSave">Зберегти</button>
+  ${e.id ? `<div class="row2" style="margin:0"><button class="btn" data-a="edFocus">▶ Фокус</button><button class="btn" data-a="edDone">${e.status === 'done' ? '↺ Не виконано' : '✓ Готово'}</button></div>
+  <button class="btn ghost danger" data-a="edDel">Видалити задачу</button>` : ''}`;
+}
+// Зберігає чернетку; повертає задачу або null
+function saveEditor() {
+  const e = ED;
+  if (!e.name.trim()) { toast('Введіть назву задачі'); $('#sheet [data-in="name"]')?.focus(); return null; }
+  const plan = e.mode === 'plan';
+  if (plan && (!e.date || !/^\d\d:\d\d$/.test(e.start))) { toast('Вкажіть дату й час'); return null; }
+  if (plan && e.pri === 'main' && !e.routine && mainCount(e.date, e.id) >= MAX_MAIN) {
+    if (!confirm(`На цей день уже ${MAX_MAIN} головні задачі. Фокус краще тримати на трьох. Все одно додати?`)) return null;
+  }
+  let t = e.id ? taskById(e.id) : null;
+  if (!t) { t = { id: uid(), status: 'todo', focusMin: 0 }; S.tasks.push(t); }
+  Object.assign(t, {
+    name: e.name.trim(), sphere: e.sphere, pri: e.pri, routine: !!e.routine, dur: +e.dur || 60, note: e.note || '',
+    date: plan ? e.date : null, start: plan ? e.start : null, tpl: false,
+  });
+  if (plan) ensureDay(t.date);
+  save();
+  return t;
+}
+function postponeSheet(id) {
+  const t = taskById(id);
+  openSheet(() => `<div class="sh-head"><h3>Перенести</h3><button class="icon" data-a="closeSheet" aria-label="Закрити">✕</button></div>
+    <div class="muted">${esc(t.name)}</div>
+    <button class="opt" data-a="pp" data-id="${id}" data-m="30">⏱<span>На 30 хв пізніше</span></button>
+    <button class="opt" data-a="pp" data-id="${id}" data-m="free">🕳<span>У наступне вільне вікно<small>Сьогодні, після поточного часу</small></span></button>
+    <button class="opt" data-a="pp" data-id="${id}" data-m="tomorrow">🌅<span>На завтра<small>Приблизно на той самий час</small></span></button>
+    <button class="opt" data-a="pp" data-id="${id}" data-m="inbox">📥<span>В інбокс<small>Без дати й часу</small></span></button>`);
+}
+function postpone(id, mode) {
+  const t = taskById(id); if (!t) return;
+  const k = today(), n = roundUp(nowMin(), 5);
+  let msg;
+  if (mode === '30') {
+    const s = Math.max(toMin(t.start), n) + 30;
+    if (s + t.dur <= DAY_END) { t.date = k; t.start = fmt(s); t.tpl = false; msg = 'о ' + t.start; }
+    else msg = placeInDay(t, addDays(k, 1), 7 * 60);
+  } else if (mode === 'free') {
+    msg = placeInDay(t, k, Math.max(roundUp(nowMin(), SNAP), toMin(t.start) + SNAP)) || placeInDay(t, addDays(k, 1), 7 * 60);
+  } else if (mode === 'tomorrow') {
+    msg = placeInDay(t, addDays(t.date || k, 1), toMin(t.start || '09:00')) || placeInDay(t, addDays(t.date || k, 1), 7 * 60);
+  }
+  if (mode === 'inbox' || msg == null) { toInbox(t); msg = 'в інбокс'; }
+  save(); closeSheet(); render();
+  toast('Перенесено ' + msg);
+}
+function tplSheet(k) {
+  openSheet(() => `<div class="sh-head"><h3>Шаблон: ${relDay(k).toLowerCase()}</h3><button class="icon" data-a="closeSheet" aria-label="Закрити">✕</button></div>
+    ${S.templates.map(t => `<button class="opt ${S.days[k]?.tpl === t.id ? 'on' : ''}" data-a="setTpl" data-k="${k}" data-id="${t.id}">📋<span>${esc(t.name)}<small>${t.blocks.length} блоків · ${t.blocks.filter(b => b.p === 'main').length} головні</small></span></button>`).join('')}
+    <div class="dim" style="font-size:13px">Ваші власні й змінені задачі залишаться на місці.</div>`);
+}
+// Вибір 3 головних (використовується в аркуші й у вечірньому підсумку)
+function mainPickerHTML(k) {
+  const list = dayTasks(k).filter(t => !t.routine && t.status !== 'skipped');
+  const cnt = mainCount(k);
+  if (!list.length) return `<div class="empty">На цей день ще немає задач</div>`;
+  return `<div class="muted" style="margin-bottom:8px">Обрано <b style="color:var(--text)">${cnt}/${MAX_MAIN}</b>. Без головних день не вважається виконаним.</div>` +
+    list.map(t => taskRow(t, { acts: `<button class="star ${t.pri === 'main' ? 'on' : ''}" data-a="toggleMain" data-id="${t.id}" aria-label="Головне">🔴</button>` })).join('');
+}
+function toggleMain(id) {
+  const t = taskById(id);
+  if (t.pri === 'main') t.pri = 'important';
+  else if (mainCount(t.date, t.id) >= MAX_MAIN) { toast(`Максимум ${MAX_MAIN} головні — зніміть одну`); return; }
+  else t.pri = 'main';
+  t.tpl = false; save();
+  refreshSheet(); if (!$('#review').hidden) renderReview(); render();
+}
+
+/* =====================================================================
+   12. ДІЇ З ЗАДАЧАМИ
+   ===================================================================== */
+function toggleDone(id) {
+  const t = taskById(id); if (!t) return;
+  const prev = t.status;
+  t.status = prev === 'done' ? 'todo' : 'done';
+  save(); render(); refreshSheet();
+  if (RV) renderReview();
+  if (t.status === 'done') {
+    if (S.settings.vibro) navigator.vibrate?.(20);
+    const allMain = t.pri === 'main' && t.date && dayComplete(t.date);
+    toast(allMain ? 'Усі головні виконано! День зараховано 🔥' : 'Готово ✓', 'Скасувати', () => { t.status = prev; save(); render(); refreshSheet(); });
+  }
+}
+function quickAdd() {
+  const name = $('#qaName').value.trim();
+  if (!name) { $('#qaName').focus(); return; }
+  S.tasks.push({ id: uid(), name, sphere: $('#qaSp').value, pri: $('#qaPri').value, routine: false, dur: +$('#qaDur').value,
+    date: null, start: null, status: 'todo', focusMin: 0, note: '', tpl: false });
+  save(); render(); toast('Додано в інбокс');
+  setTimeout(() => $('#qaName')?.focus(), 50);
+}
+
+/* =====================================================================
+   13. ФОКУС-РЕЖИМ (Помодоро)
+   Час рахується від міток часу, а не через setInterval — тому таймер
+   не збивається при згортанні застосунку чи блокуванні екрана.
+   ===================================================================== */
+let focusHidden = false;
+const mmss = ms => { const s = Math.ceil(ms / 1000); return pad(Math.floor(s / 60)) + ':' + pad(s % 60); };
+function focusLeft() {
+  const f = S.focus; if (!f) return 0;
+  return f.left != null ? f.left : Math.max(0, f.len - (Date.now() - f.startedAt));
+}
+function startFocus(id) {
+  const t = taskById(id); if (!t) return;
+  unlockAudio();
+  if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission().catch(() => {});
+  if (S.focus) stopFocus(true);
+  // Задача з інбоксу стає задачею «на зараз», щоб час потрапив у статистику дня
+  if (!t.start) { t.date = today(); t.start = fmt(Math.floor(nowMin() / 5) * 5); t.tpl = false; ensureDay(t.date); }
+  S.focus = { taskId: id, phase: 'work', len: S.settings.pomo.work * 60000, startedAt: Date.now(), left: null, round: 1 };
+  focusHidden = false;
+  save(); closeSheet(); renderFocus(); render(); wakeLock(true);
+}
+function creditWork(ms) {
+  const t = taskById(S.focus.taskId), m = Math.round(ms / 60000);
+  if (t && m > 0) t.focusMin = (t.focusMin || 0) + m;
+}
+// Обробка переходів фаз (у т.ч. якщо застосунок довго був у фоні)
+function focusAdvance() {
+  const f = S.focus; if (!f || f.left != null) return;
+  let fired = null;
+  while (f.left == null && Date.now() - f.startedAt >= f.len) {
+    const endAt = f.startedAt + f.len;
+    if (f.phase === 'work') { creditWork(f.len); f.phase = 'break'; f.len = S.settings.pomo.brk * 60000; f.startedAt = endAt; fired = 'work'; }
+    else { f.phase = 'work'; f.round++; f.len = S.settings.pomo.work * 60000; f.left = f.len; f.startedAt = null; fired = 'break'; }
+  }
+  if (fired) {
+    save();
+    alarm(fired === 'work' ? `Фокус завершено 🎉 Перерва ${S.settings.pomo.brk} хв` : 'Перерва завершена. Готові до наступного раунду?');
+    render();
+  }
+}
+function pauseFocus() { const f = S.focus; f.left = focusLeft(); f.startedAt = null; save(); renderFocus(); }
+function resumeFocus() { const f = S.focus; f.startedAt = Date.now() - (f.len - f.left); f.left = null; save(); renderFocus(); wakeLock(true); }
+function stopFocus(silent) {
+  const f = S.focus; if (!f) return;
+  if (f.phase === 'work') creditWork(f.len - focusLeft());
+  const t = taskById(f.taskId);
+  S.focus = null; save(); wakeLock(false);
+  if (!silent) { renderFocus(); render(); toast(t && t.focusMin ? `Фокус: ${t.focusMin} хв на «${t.name}»` : 'Фокус зупинено'); }
+}
+function setFocusLen(w, b) {
+  S.settings.pomo = { work: w, brk: b };
+  const f = S.focus;
+  if (f && f.phase === 'work') { f.len = w * 60000; if (f.left != null) f.left = f.len; }
+  save(); renderFocus();
+}
+function renderFocus() {
+  const o = $('#focus');
+  const f = S.focus;
+  const bt = $('#bannerT'); if (bt && f) bt.textContent = mmss(focusLeft());
+  if (!f || focusHidden) { o.hidden = true; o.dataset.sig = ''; return; }
+  const t = taskById(f.taskId);
+  if (!t) { S.focus = null; save(); o.hidden = true; return; }
+  o.hidden = false;
+  const left = focusLeft(), running = f.left == null;
+  const fresh = f.phase === 'work' && f.len - left < 60000;     // перша хвилина — можна змінити тривалість
+  const R = 130, C = 2 * Math.PI * R;
+  const sig = [f.phase, running, f.len, f.round, fresh, t.name, t.status].join('|');
+  if (o.dataset.sig !== sig) {
+    const s = sph(t.sphere);
+    const waiting = !running && f.left === f.len;              // раунд ще не почато
+    o.dataset.sig = sig;
+    o.className = 'overlay ' + (f.phase === 'break' ? 'phase-brk' : '');
+    o.innerHTML = `<div class="focus-in">
+      <div class="tophead"><button class="icon" data-a="hideFocus" aria-label="Згорнути"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></button>
+        <span class="muted">${f.phase === 'work' ? `Фокус · раунд ${f.round}` : 'Перерва'}</span><span style="width:44px"></span></div>
+      <div class="meta" style="justify-content:center;margin-top:10px"><span class="sph" style="--c:${s.color}">${s.emoji} ${esc(s.name)}</span></div>
+      <h2>${esc(t.name)}</h2>
+      <div class="ring"><svg viewBox="0 0 300 300"><circle cx="150" cy="150" r="${R}" fill="none" stroke="var(--card2)" stroke-width="10"/>
+        <circle class="arc" id="fArc" cx="150" cy="150" r="${R}" fill="none" stroke="${s.color}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - left / f.len)}"/></svg>
+        <div class="tt"><b id="fTime">${mmss(left)}</b><span>${f.phase === 'work' ? (running ? 'тримайте фокус' : 'пауза') : (running ? 'відпочиньте, без телефону' : 'пауза')}</span></div></div>
+      ${fresh ? `<div class="seg" style="width:100%;max-width:280px">${[[25, 5], [50, 10]].map(([w, b]) => `<button class="${f.len === w * 60000 ? 'on' : ''}" data-a="fLen" data-w="${w}" data-b="${b}">${w} / ${b}</button>`).join('')}</div>` : ''}
+      <div class="focus-btns">
+        ${running ? `<button class="btn big" data-a="fPause">❚❚ Пауза</button>` : `<button class="btn primary big" data-a="fResume">▶ ${waiting ? 'Почати раунд' : 'Продовжити'}</button>`}
+        <div class="row2" style="margin:0"><button class="btn" data-a="fStop">■ Стоп</button><button class="btn" data-a="fDone">✓ Виконано</button></div>
+      </div></div>`;
+  } else {
+    $('#fTime').textContent = mmss(left);
+    $('#fArc')?.setAttribute('stroke-dashoffset', C * (1 - left / f.len));
+  }
+}
+
+// --- Звук, вібрація, сповіщення, Wake Lock ---
+let actx = null;
+function unlockAudio() {   // на iOS звук дозволений лише після дотику користувача
+  try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume(); } catch (e) { /* без звуку */ }
+}
+function beep() {
+  if (!S.settings.sound || !actx) return;
+  const t0 = actx.currentTime;
+  [0, 0.32, 0.64].forEach((d, i) => {
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.type = 'sine'; o.frequency.value = i === 2 ? 1046 : 784;
+    g.gain.setValueAtTime(0.0001, t0 + d);
+    g.gain.exponentialRampToValueAtTime(0.35, t0 + d + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + d + 0.28);
+    o.connect(g).connect(actx.destination); o.start(t0 + d); o.stop(t0 + d + 0.3);
+  });
+}
+async function alarm(msg) {
+  beep();
+  if (S.settings.vibro) navigator.vibrate?.([300, 150, 300, 150, 300]);
+  toast(msg);
+  if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
+    try {
+      const reg = await navigator.serviceWorker?.getRegistration();
+      if (reg) reg.showNotification('Контроль: Фокус', { body: msg, icon: 'icons/icon-192.png', tag: 'focus' });
+      else new Notification('Контроль: Фокус', { body: msg });
+    } catch (e) { /* сповіщення недоступні */ }
+  }
+}
+let wl = null;
+async function wakeLock(on) {
+  try {
+    if (on && 'wakeLock' in navigator && !wl && document.visibilityState === 'visible') {
+      wl = await navigator.wakeLock.request('screen'); wl.addEventListener('release', () => (wl = null));
+    } else if (!on && wl) { await wl.release(); wl = null; }
+  } catch (e) { /* Wake Lock не підтримується */ }
+}
+
+/* =====================================================================
+   14. ВЕЧІРНІЙ ПІДСУМОК
+   ===================================================================== */
+let RV = null;              // { date, step }
+let snoozeUntil = 0;
+function reviewDue() {
+  const k = today(), y = addDays(k, -1);
+  if (!S.reviewed[y] && S.days[y] && dayTasks(y).some(t => !t.routine)) return y;   // пропущений учора
+  if (!S.reviewed[k] && nowMin() >= toMin(S.settings.reviewTime)) return k;
+  return null;
+}
+function checkReview() {
+  if (!$('#review').hidden || (S.focus && !focusHidden) || Date.now() < snoozeUntil) return;
+  const d = reviewDue(); if (d) openReview(d);
+}
+function openReview(date) { RV = { date, step: 1 }; $('#review').hidden = false; renderReview(); }
+function closeReview() { $('#review').hidden = true; RV = null; render(); }
+function renderReview() {
+  const { date, step } = RV;
+  const next = addDays(date, 1);
+  const nextLbl = next === today() ? 'сьогодні' : 'завтра';
+  const list = dayTasks(date).filter(t => !t.routine && t.status !== 'skipped');
+  let body = '', title = '';
+  if (step === 1) {
+    title = 'Що зроблено?';
+    body = `<p class="muted">Позначте виконане за ${relDay(date).toLowerCase()}.</p>` +
+      (list.length ? list.map(t => taskRow(t, { check: true })).join('') : '<div class="empty">Задач не було</div>');
+  } else if (step === 2) {
+    title = 'Невиконане';
+    const todo = list.filter(t => t.status === 'todo');
+    body = todo.length
+      ? `<p class="muted">Вирішіть долю кожної задачі — нічого не має «висіти».</p>` + todo.map(t => `<div class="task col" style="--c:${sph(t.sphere).color}">
+          <div class="name">${PRI[t.pri].dot} ${esc(t.name)}</div><div class="sub">${t.start}–${fmt(endOf(t))}</div>
+          <div class="mv"><button class="btn" data-a="rvMove" data-id="${t.id}" data-m="next">На ${nextLbl}</button><button class="btn" data-a="rvMove" data-id="${t.id}" data-m="inbox">В інбокс</button><button class="btn danger" data-a="rvMove" data-id="${t.id}" data-m="del" aria-label="Видалити">✕</button></div></div>`).join('')
+      : `<div class="empty">Все виконано або розподілено 🎉</div>`;
+  } else {
+    title = `3 головні на ${nextLbl}`;
+    ensureDay(next);
+    body = `<p class="muted">${humanDate(next)}</p>` + mainPickerHTML(next) +
+      `<div class="label">Додати задачу на ${nextLbl}</div><div style="display:grid;grid-template-columns:1fr auto;gap:8px"><input id="rvAdd" placeholder="Назва…" maxlength="120"><button class="btn sm primary" data-a="rvAdd" style="min-height:48px">+</button></div>`;
+  }
+  $('#review').innerHTML = `<div class="rv">
+    <div class="sh-head"><span class="eyebrow">Вечірній підсумок · ${relDay(date)}</span><button class="btn sm ghost" data-a="rvLater">Пізніше</button></div>
+    <div class="steps">${[1, 2, 3].map(i => `<i class="${i <= step ? 'on' : ''}"></i>`).join('')}</div>
+    <h1 style="margin-bottom:8px">${title}</h1>
+    <div class="list">${body}</div>
+    <div class="foot">${step > 1 ? `<button class="btn" data-a="rvStep" data-n="-1">Назад</button>` : '<span></span>'}
+      ${step < 3 ? `<button class="btn primary" data-a="rvStep" data-n="1">Далі</button>` : `<button class="btn primary" data-a="rvFinish">Завершити день</button>`}</div>
+  </div>`;
+}
+function rvMove(id, mode) {
+  const t = taskById(id);
+  if (mode === 'del') S.tasks = S.tasks.filter(x => x.id !== id);
+  else if (mode === 'inbox') toInbox(t);
+  else if (!placeInDay(t, addDays(RV.date, 1), toMin(t.start)) && !placeInDay(t, addDays(RV.date, 1), 7 * 60)) toInbox(t);
+  save(); renderReview();
+}
+function rvFinish() {
+  S.reviewed[RV.date] = true; save();
+  const ok = dayComplete(RV.date);
+  closeReview();
+  toast(ok ? `День зараховано 🔥 Серія: ${streak()}` : 'День закрито. Завтра — нова спроба 💪');
+}
+
+/* =====================================================================
+   15. ЕКСПОРТ / ІМПОРТ
+   ===================================================================== */
+function exportData() {
+  const blob = new Blob([JSON.stringify(S, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = `focus-backup-${today()}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+$('#importFile').addEventListener('change', async e => {
+  const file = e.target.files[0]; e.target.value = '';
+  if (!file) return;
+  try {
+    const d = JSON.parse(await file.text());
+    if (!valid(d)) throw new Error('format');
+    if (!confirm(`Замінити поточні дані даними з файлу?\nЗадач у файлі: ${d.tasks.length}`)) return;
+    S = migrate(d); S.focus = null; save();
+    viewDayKey = today(); render(); toast('Дані імпортовано ✓');
+  } catch (err) { toast('Файл не схожий на резервну копію «Фокусу»'); }
+});
+
+/* =====================================================================
+   16. ОБРОБНИКИ ПОДІЙ (делегування)
+   ===================================================================== */
+const A = {
+  tab: el => switchTab(el.dataset.t),
+  closeSheet: () => closeSheet(),
+  edit: el => openEditor(el.dataset.id),
+  add: el => openEditor(null, { date: el.dataset.date }),
+  done: el => toggleDone(el.dataset.id),
+  focus: el => startFocus(el.dataset.id),
+  postpone: el => postponeSheet(el.dataset.id),
+  pp: el => postpone(el.dataset.id, el.dataset.m),
+  pickTpl: el => tplSheet(el.dataset.k),
+  setTpl: el => { switchTemplate(el.dataset.k, el.dataset.id); closeSheet(); render(); toast('Шаблон змінено'); },
+  pickMain: el => {
+    const k = el.dataset.k; ensureDay(k);
+    openSheet(() => `<div class="sh-head"><h3>Головні: ${relDay(k).toLowerCase()}</h3><button class="icon" data-a="closeSheet" aria-label="Закрити">✕</button></div>${mainPickerHTML(k)}`);
+  },
+  toggleMain: el => toggleMain(el.dataset.id),
+  dayShift: el => { const n = +el.dataset.n; viewDayKey = n === 0 ? today() : addDays(viewDayKey, n); render(); window.scrollTo(0, 0); if (viewDayKey === today()) scrollToNow(); },
+  schedule: el => { const t = taskById(el.dataset.id); const w = scheduleTask(t); render(); toast(w ? 'Заплановано ' + w : 'Немає вільного вікна'); },
+  quickAdd: () => quickAdd(),
+  fSp: el => { S.ui.fSp = el.dataset.v; save(); render(); },
+  fPri: el => { S.ui.fPri = el.dataset.v; save(); render(); },
+  // редактор
+  edSet: el => {
+    const f = el.dataset.f, v = el.dataset.v;
+    ED[f] = v; if (f === 'pri') ED.routine = false;
+    refreshSheet();
+  },
+  edSave: () => { const t = saveEditor(); if (t) { closeSheet(); render(); toast('Збережено'); } },
+  edFocus: () => { const t = saveEditor(); if (t) startFocus(t.id); },
+  edDone: () => { const t = saveEditor(); if (t) { closeSheet(); toggleDone(t.id); } },
+  edDel: () => {
+    const t = taskById(ED.id); if (!t || !confirm('Видалити задачу?')) return;
+    const idx = S.tasks.indexOf(t); S.tasks.splice(idx, 1);
+    if (S.focus?.taskId === t.id) S.focus = null;
+    save(); closeSheet(); render(); renderFocus();
+    toast('Видалено', 'Повернути', () => { S.tasks.splice(idx, 0, t); save(); render(); });
+  },
+  // фокус
+  openFocus: () => { focusHidden = false; renderFocus(); },
+  hideFocus: () => { focusHidden = true; renderFocus(); render(); },
+  fPause: () => pauseFocus(),
+  fResume: () => { unlockAudio(); resumeFocus(); },
+  fStop: () => stopFocus(),
+  fDone: () => { const id = S.focus.taskId; stopFocus(true); const t = taskById(id); if (t && t.status !== 'done') toggleDone(id); renderFocus(); render(); },
+  fLen: el => setFocusLen(+el.dataset.w, +el.dataset.b),
+  // підсумок і налаштування
+  statRange: el => { S.ui.statRange = el.dataset.v; save(); render(); },
+  sub: el => { S.ui.sub = el.dataset.v || null; save(); render(); window.scrollTo(0, 0); },
+  pomo: el => setFocusLen(+el.dataset.w, +el.dataset.b) || render(),
+  toggleSet: el => { S.settings[el.dataset.k] = !S.settings[el.dataset.k]; save(); render(); },
+  notifyPerm: async () => {
+    if (!('Notification' in window)) return toast('Сповіщення не підтримуються');
+    const r = await Notification.requestPermission(); render();
+    toast(r === 'granted' ? 'Сповіщення дозволено' : 'Сповіщення заборонено в налаштуваннях браузера');
+  },
+  reviewNow: () => { snoozeUntil = 0; openReview(today()); },
+  tplNew: () => {
+    const t = { id: uid(), name: 'Новий шаблон', blocks: [{ s: '09:00', e: '10:00', n: 'Нова задача', sp: S.spheres[0].id, p: 'important' }] };
+    S.templates.push(t); S.ui.sub = 'tpl:' + t.id; save(); render();
+  },
+  tplDup: () => {
+    const src = tplById(S.ui.sub.slice(4));
+    const t = { id: uid(), name: src.name + ' (копія)', blocks: src.blocks.map(b => ({ ...b })) };
+    S.templates.push(t); S.ui.sub = 'tpl:' + t.id; save(); render(); toast('Шаблон скопійовано');
+  },
+  tplDel: () => {
+    if (S.templates.length <= 1) return toast('Має залишитися хоча б один шаблон');
+    const id = S.ui.sub.slice(4); if (!confirm('Видалити шаблон?')) return;
+    S.templates = S.templates.filter(t => t.id !== id);
+    S.settings.week = S.settings.week.map(w => (w === id ? S.templates[0].id : w));
+    S.ui.sub = 'settings'; save(); render();
+  },
+  tplApply: () => { switchTemplate(today(), S.ui.sub.slice(4)); toast('Застосовано до сьогодні'); },
+  blkAdd: () => {
+    const tpl = tplById(S.ui.sub.slice(4)); const last = tpl.blocks[tpl.blocks.length - 1];
+    const s = last ? Math.min(toMin(last.e), 23 * 60) : 9 * 60;
+    tpl.blocks.push({ s: fmt(s), e: fmt(Math.min(s + 60, 23 * 60 + 55)), n: 'Новий блок', sp: S.spheres[0].id, p: 'important' });
+    save(); render(); window.scrollTo(0, document.body.scrollHeight);
+  },
+  blkDel: el => { const tpl = tplById(S.ui.sub.slice(4)); tpl.blocks.splice(+el.dataset.i, 1); save(); render(); },
+  sphAdd: () => {
+    const colors = ['#ff6fae', '#22c3d6', '#c3e14a', '#ffd166', '#a78bfa'];
+    S.spheres.push({ id: uid(), name: 'Нова сфера', color: colors[S.spheres.length % colors.length], emoji: '⭐' });
+    save(); render();
+  },
+  sphDel: el => {
+    if (S.spheres.length <= 1) return toast('Має залишитися хоча б одна сфера');
+    const id = el.dataset.id, s = sph(id);
+    const fb = S.spheres.find(x => x.id !== id);
+    if (!confirm(`Видалити сферу «${s.name}»? Її задачі перейдуть у «${fb.name}».`)) return;
+    S.spheres = S.spheres.filter(x => x.id !== id);
+    S.tasks.forEach(t => { if (t.sphere === id) t.sphere = fb.id; });
+    S.templates.forEach(tp => tp.blocks.forEach(b => { if (b.sp === id) b.sp = fb.id; }));
+    save(); render();
+  },
+  export: () => exportData(),
+  import: () => $('#importFile').click(),
+  reset: () => {
+    if (!confirm('Видалити ВСІ задачі, шаблони й налаштування? Це не можна скасувати. Спершу зробіть експорт.')) return;
+    S = defaults(); save(); viewDayKey = today(); render(); renderFocus(); toast('Дані скинуто');
+  },
+  // вечірній підсумок
+  rvStep: el => { RV.step = clamp(RV.step + +el.dataset.n, 1, 3); renderReview(); $('#review').scrollTo(0, 0); },
+  rvMove: el => rvMove(el.dataset.id, el.dataset.m),
+  rvLater: () => { snoozeUntil = Date.now() + 30 * 60000; closeReview(); toast('Нагадаю через 30 хв'); },
+  rvFinish: () => rvFinish(),
+  rvAdd: () => {
+    const inp = $('#rvAdd'), name = inp.value.trim(); if (!name) return inp.focus();
+    const t = { id: uid(), name, sphere: S.spheres[0].id, pri: 'important', routine: false, dur: 60, date: null, start: null, status: 'todo', focusMin: 0, note: '', tpl: false };
+    S.tasks.push(t);
+    if (!placeInDay(t, addDays(RV.date, 1), 8 * 60)) toInbox(t);
+    save(); renderReview();
+  },
+};
+
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-a]');
+  if (!el || drag?.active) return;
+  // клік по рядку задачі в оверлеї підсумку відкриває редактор поверх — це ок
+  const fn = A[el.dataset.a];
+  if (fn) { e.preventDefault(); fn(el, e); }
+});
+// Поля редактора: оновлюють чернетку без перемальовування
+document.addEventListener('input', e => {
+  const el = e.target;
+  if (el.dataset.in && ED) ED[el.dataset.in] = el.value;
+});
+// Поля налаштувань і шаблонів: зберігаються при зміні
+document.addEventListener('change', e => {
+  const el = e.target, c = el.dataset.c; if (!c) return;
+  const v = el.value;
+  if (c === 'reviewTime' && v) S.settings.reviewTime = v;
+  else if (c === 'week') {
+    // Майбутні вже створені дні цього дня тижня теж переходять на новий шаблон
+    const i = +el.dataset.i; S.settings.week[i] = v;
+    Object.keys(S.days).filter(k => k > today() && wd(k) === i && S.days[k].tpl !== v).forEach(k => switchTemplate(k, v));
+  }
+  else if (c === 'sphName') sph(el.dataset.id).name = v.trim() || 'Без назви';
+  else if (c === 'sphEmoji') sph(el.dataset.id).emoji = v.trim() || '•';
+  else if (c === 'sphColor') sph(el.dataset.id).color = v;
+  else if (c === 'tplName') tplById(el.dataset.id).name = v.trim() || 'Шаблон';
+  else if (c === 'blk') {
+    const tpl = tplById(S.ui.sub.slice(4)), b = tpl.blocks[+el.dataset.i], f = el.dataset.f;
+    if ((f === 's' || f === 'e') && !v) return;
+    if (f === 'p' && v === 'main' && tpl.blocks.filter(x => x.p === 'main' && x !== b).length >= MAX_MAIN) {
+      toast(`У шаблоні вже ${MAX_MAIN} головні`); el.value = b.p || ''; return;
+    }
+    b[f] = f === 'p' ? (v || null) : v;
+    if (f === 'sp') el.closest('.blk-row').style.setProperty('--c', sph(v).color);
+  }
+  save();
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target.id === 'qaName') quickAdd();
+  if (e.key === 'Enter' && e.target.id === 'rvAdd') A.rvAdd();
+  if (e.key === 'Escape' && sheetRender) closeSheet();
+});
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') return;
+  focusAdvance(); renderFocus();
+  if (S.focus && S.focus.left == null) wakeLock(true);
+  if (!drag) render();
+  checkReview();
+});
+
+/* =====================================================================
+   17. СТАРТ
+   ===================================================================== */
+S = load();
+viewDayKey = today();
+render();
+if (S.ui.tab === 'day') scrollToNow();
+focusAdvance(); renderFocus();
+setTimeout(checkReview, 800);
+
+setInterval(() => { if (S.focus) { focusAdvance(); renderFocus(); } }, 1000);
+let lastDay = today();
+setInterval(() => {
+  if (drag) return;
+  if (today() !== lastDay) { lastDay = today(); viewDayKey = today(); render(); }   // настала північ
+  else if (S.ui.tab === 'now') render();
+  else if (S.ui.tab === 'day') updateNowLine();
+  checkReview();
+}, 20000);
+
+// Офлайн-режим
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
