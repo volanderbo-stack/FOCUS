@@ -241,6 +241,24 @@ h3{font-size:19px;margin:0}
 .star{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-size:20px;flex:none;background:var(--card2);filter:grayscale(1);opacity:.5}
 .star.on{filter:none;opacity:1;background:color-mix(in srgb,var(--red) 22%,var(--card2))}
 
+/* ===================== Навчання сьогодні ===================== */
+.study{background:var(--card);border-radius:16px;padding:6px 14px;margin-bottom:12px}
+.study-h{display:flex;justify-content:space-between;align-items:center;padding:8px 0 4px;font-size:14px;color:var(--muted)}
+.study-h b{color:var(--text);font-size:17px}
+.st-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.study-h + .st-row{border-top:0}
+.st-emo{font-size:22px;width:30px;text-align:center;flex:none}
+.st-row .body{flex:1;min-width:0}
+.st-row .name{font-weight:600}
+.st-row .sub{font-size:13px;color:var(--muted);margin-top:2px}
+.st-row.due .sub{color:var(--yellow);font-weight:600}
+.st-row.done .name{color:var(--muted)}
+a.btn{text-decoration:none}
+.wk7{display:flex;gap:5px;margin-left:auto}
+.wk7 i{width:14px;height:14px;border-radius:4px;background:var(--line)}
+.wk7 i.on{background:var(--green)}
+.wk7 i.today{outline:2px solid var(--muted);outline-offset:1px}
+
 /* ===================== Тост ===================== */
 .toast{position:fixed;left:50%;bottom:calc(var(--nav) + 18px + env(safe-area-inset-bottom));transform:translate(-50%,20px);opacity:0;
   background:#2b3040;color:var(--text);padding:12px 16px;border-radius:14px;z-index:80;transition:all .2s;
@@ -379,7 +397,21 @@ function defaults() {
       vibro: true,
     },
     focus: null,       // стан фокус-сесії (переживає перезавантаження)
+    study: studyDefaults(),
     ui: { tab: 'now', sub: null, statRange: 'day', fSp: 'all', fPri: 'all' },
+  };
+}
+
+// Три щоденні навчальні додатки: що відкрити, о котрій нагадати
+function studyDefaults() {
+  return {
+    items: [
+      { id: 'ecoute', emoji: '🎧', name: 'Écoute', what: 'Французька на слух', url: 'https://volanderbo-stack.github.io/French-/', time: '14:45' },
+      { id: 'slovo',  emoji: '🎙️', name: 'Слово',  what: 'Говоріння й дикція',  url: 'https://volanderbo-stack.github.io/Word/',    time: '19:00' },
+      { id: 'bible',  emoji: '📖', name: 'Біблія', what: 'Читання ввечері',     url: 'https://volanderbo-stack.github.io/Biblia/',  time: '20:30' },
+    ],
+    log: {},       // { 'YYYY-MM-DD': { ecoute: true, … } }
+    reminded: {},  // { 'YYYY-MM-DD': { ecoute: true } } — нагадування вже показано
   };
 }
 
@@ -401,6 +433,10 @@ function migrate(d) {
   d.reviewed = d.reviewed || {};
   d.ui = { ...def.ui, ...(d.ui || {}) };
   d.focus = d.focus || null;
+  const sd = studyDefaults();
+  d.study = d.study && Array.isArray(d.study.items) ? d.study : sd;
+  d.study.log = d.study.log || {};
+  d.study.reminded = d.study.reminded || {};
   d.v = VER;
   return d;
 }
@@ -524,6 +560,50 @@ function streak() {
 }
 const last7 = () => [...Array(7)].map((_, i) => addDays(today(), i - 6));
 
+// --- Навчання: щоденні відмітки ---
+const studyDone = (k, id) => !!S.study.log[k]?.[id];
+function studyStreak(id) {
+  let k = today(), n = 0;
+  if (!studyDone(k, id)) k = addDays(k, -1);     // сьогодні ще можна встигнути
+  while (studyDone(k, id)) { n++; k = addDays(k, -1); }
+  return n;
+}
+function toggleStudy(id) {
+  const k = today(), log = S.study.log[k] = S.study.log[k] || {};
+  if (log[id]) delete log[id]; else log[id] = true;
+  save(); render();
+  const it = S.study.items.find(x => x.id === id);
+  if (log[id]) {
+    const left = S.study.items.filter(x => !studyDone(k, x.id)).length;
+    toast(left ? `${it.name} ✓ Залишилось: ${left}` : 'Усе навчання на сьогодні виконано 🔥');
+  }
+}
+// Нагадує один раз на день, коли настав час і відмітки ще немає
+function checkStudy() {
+  const k = today(), n = nowMin(), rem = S.study.reminded[k] = S.study.reminded[k] || {};
+  for (const it of S.study.items) {
+    if (rem[it.id] || studyDone(k, it.id) || n < toMin(it.time) || n > toMin(it.time) + 180) continue;
+    rem[it.id] = true; save();
+    alarm(`Час для «${it.name}»: ${it.what.toLowerCase()}`);
+    break;
+  }
+}
+function studyCard() {
+  const k = today(), n = nowMin(), items = S.study.items;
+  const done = items.filter(x => studyDone(k, x.id)).length;
+  const rows = items.map(it => {
+    const ok = studyDone(k, it.id), due = !ok && n >= toMin(it.time), st = studyStreak(it.id);
+    const sub = ok ? 'Виконано' : due ? `Пора! (з ${it.time})` : `о ${it.time} · ${esc(it.what)}`;
+    return `<div class="st-row ${ok ? 'done' : ''} ${due ? 'due' : ''}">
+      <button class="check ${ok ? 'on' : ''}" data-a="study" data-id="${it.id}" aria-label="Відмітити «${esc(it.name)}»">${ok ? '✓' : ''}</button>
+      <span class="st-emo">${it.emoji}</span>
+      <div class="body"><div class="name">${esc(it.name)}${st ? ` <span class="muted" style="font-weight:400">· ${st} 🔥</span>` : ''}</div><div class="sub">${sub}</div></div>
+      <a class="btn sm ${due ? 'primary' : ''}" href="${esc(it.url)}" target="_blank" rel="noopener">Відкрити</a>
+    </div>`;
+  }).join('');
+  return `<section class="study"><div class="study-h"><span>Навчання сьогодні</span><b>${done}/${items.length}${done === items.length ? ' 🔥' : ''}</b></div>${rows}</section>`;
+}
+
 /* =====================================================================
    6. ІНТЕРФЕЙС: загальне
    ===================================================================== */
@@ -606,6 +686,8 @@ function viewNow() {
   // Лічильник головних
   h += `<button class="mains" data-a="pickMain" data-k="${k}"><span>Головні сьогодні: <b>${ms.done}/${ms.total}</b>${ms.total === 0 ? ' <span class="muted">— обрати</span>' : ''}</span>
     <span class="dots">${[...Array(Math.max(ms.total, MAX_MAIN))].map((_, i) => `<i class="${i < ms.done ? 'on' : ''}"></i>`).join('')}</span></button>`;
+
+  h += studyCard();
 
   if (cur) {
     const s = sph(cur.sphere), st = toMin(cur.start), done = cur.status === 'done';
@@ -831,6 +913,10 @@ function viewStats() {
     <div class="label">Головні за 7 днів</div>
     <div class="bars">${keys.map(d => { const s = mainStats(d); const p = s.total ? s.done / s.total : 0;
       return `<div class="${d === k ? 'today' : ''}"><i class="${s.total ? '' : 'none'}" style="height:${Math.max(p * 70, 3)}px;${p === 1 ? 'background:var(--green)' : ''}"></i><small>${WD_SHORT[wd(d)]}</small></div>`; }).join('')}</div>
+    <div class="label">Навчання за 7 днів</div>
+    <div class="study">${S.study.items.map(it => `<div class="st-row"><span class="st-emo">${it.emoji}</span>
+      <div class="body"><div class="name">${esc(it.name)}</div><div class="sub">${keys.filter(d => studyDone(d, it.id)).length} з 7 днів${studyStreak(it.id) ? ` · серія ${studyStreak(it.id)} 🔥` : ""}</div></div>
+      <div class="wk7">${keys.map(d => `<i class="${studyDone(d, it.id) ? 'on' : ''} ${d === k ? 'today' : ''}" title="${relDay(d)}"></i>`).join('')}</div></div>`).join('')}</div>
     <div class="label">Час по сферах</div>
     <div class="piebox">
       <div class="seg"><button class="${range === 'day' ? 'on' : ''}" data-a="statRange" data-v="day">Сьогодні</button><button class="${range === 'week' ? 'on' : ''}" data-a="statRange" data-v="week">7 днів</button></div>
@@ -851,6 +937,9 @@ function viewSettings() {
     <div class="set-row"><span>Вібрація</span><button class="switch ${st.vibro ? 'on' : ''}" data-a="toggleSet" data-k="vibro" aria-label="Вібрація"></button></div>
     <div class="set-row"><span>Сповіщення</span><button class="btn sm" data-a="notifyPerm">${'Notification' in window ? (Notification.permission === 'granted' ? 'Дозволено ✓' : 'Дозволити') : 'Недоступно'}</button></div>
   </div>
+  <div class="label">Навчання: час нагадування</div>
+  <div class="card">${S.study.items.map(it => `<div class="set-row"><span>${it.emoji} ${esc(it.name)}</span><input type="time" data-c="studyTime" data-id="${it.id}" value="${it.time}"></div>`).join('')}
+    <div class="dim" style="font-size:13px">Нагадування спрацьовує, коли «Фокус» відкритий або згорнутий. Якщо застосунок закритий повністю — телефон його не покаже.</div></div>
   <div class="label">Вечірній підсумок</div>
   <div class="card"><div class="set-row"><span>Час нагадування</span><input type="time" data-c="reviewTime" value="${st.reviewTime}"></div></div>
   <div class="label">Тижневий розклад</div>
@@ -1255,6 +1344,7 @@ const A = {
     openSheet(() => `<div class="sh-head"><h3>Головні: ${relDay(k).toLowerCase()}</h3><button class="icon" data-a="closeSheet" aria-label="Закрити">✕</button></div>${mainPickerHTML(k)}`);
   },
   toggleMain: el => toggleMain(el.dataset.id),
+  study: el => toggleStudy(el.dataset.id),
   dayShift: el => { const n = +el.dataset.n; viewDayKey = n === 0 ? today() : addDays(viewDayKey, n); render(); window.scrollTo(0, 0); if (viewDayKey === today()) scrollToNow(); },
   schedule: el => { const t = taskById(el.dataset.id); const w = scheduleTask(t); render(); toast(w ? 'Заплановано ' + w : 'Немає вільного вікна'); },
   quickAdd: () => quickAdd(),
@@ -1371,6 +1461,7 @@ document.addEventListener('change', e => {
   const el = e.target, c = el.dataset.c; if (!c) return;
   const v = el.value;
   if (c === 'reviewTime' && v) S.settings.reviewTime = v;
+  else if (c === 'studyTime' && v) { const it = S.study.items.find(x => x.id === el.dataset.id); if (it) it.time = v; delete S.study.reminded[today()]?.[el.dataset.id]; }
   else if (c === 'week') {
     // Майбутні вже створені дні цього дня тижня теж переходять на новий шаблон
     const i = +el.dataset.i; S.settings.week[i] = v;
@@ -1401,7 +1492,7 @@ document.addEventListener('visibilitychange', () => {
   focusAdvance(); renderFocus();
   if (S.focus && S.focus.left == null) wakeLock(true);
   if (!drag) render();
-  checkReview();
+  checkReview(); checkStudy();
 });
 
 /* =====================================================================
@@ -1421,7 +1512,7 @@ setInterval(() => {
   if (today() !== lastDay) { lastDay = today(); viewDayKey = today(); render(); }   // настала північ
   else if (S.ui.tab === 'now') render();
   else if (S.ui.tab === 'day') updateNowLine();
-  checkReview();
+  checkReview(); checkStudy();
 }, 20000);
 
 // Офлайн-режим
